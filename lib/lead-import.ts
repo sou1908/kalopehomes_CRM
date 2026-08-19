@@ -5,6 +5,7 @@ import { leads } from "./db/schema";
 import { parseCsv, normalizeHeader } from "./csv";
 import { createLead, listLeadStages, type LeadActor } from "./leads";
 import { firstPipelineId, setLeadPipeline } from "./pipelines";
+import { addLeadAssignee } from "./assignees";
 
 /**
  * CSV → leads. Built for marketing dumps (Facebook lead ads, spreadsheets from
@@ -369,7 +370,7 @@ export async function commitLeadImport(
   csvText: string,
   orgId: string,
   actor: LeadActor,
-  options: { skipDuplicates: boolean },
+  options: { skipDuplicates: boolean; assigneeUserId?: string | null },
 ): Promise<ImportResult> {
   const preview = await previewLeadImport(csvText, orgId);
   const pipelineId = await firstPipelineId(orgId);
@@ -417,6 +418,15 @@ export async function commitLeadImport(
       // (Telecalling) rather than leaving them with no pipeline at all.
       if (pipelineId) {
         await setLeadPipeline(id, orgId, pipelineId, actor, { silent: true }).catch(() => {});
+      }
+
+      // Silent on purpose: assigning 400 leads must not send 400 notifications.
+      // The importer knows they just imported them.
+      if (options.assigneeUserId) {
+        await addLeadAssignee(id, orgId, options.assigneeUserId, actor, {
+          primary: true,
+          silent: true,
+        }).catch(() => {});
       }
       result.created++;
     } catch (err) {

@@ -12,11 +12,20 @@ type Phase =
   | { step: "review"; preview: ImportPreview }
   | { step: "done"; result: ImportResult };
 
-export function ImportClient() {
+export function ImportClient({
+  assignees = [],
+  defaultAssigneeId = null,
+}: {
+  /** People who work the pipeline imported leads land in. */
+  assignees?: Array<{ id: string; name: string }>;
+  /** Pre-selected: whoever is importing, when they work that pipeline. */
+  defaultAssigneeId?: string | null;
+}) {
   const [phase, setPhase] = useState<Phase>({ step: "pick" });
   const [fileName, setFileName] = useState<string | null>(null);
   const [csvText, setCsvText] = useState("");
   const [skipDuplicates, setSkipDuplicates] = useState(true);
+  const [assigneeId, setAssigneeId] = useState<string>(defaultAssigneeId ?? "");
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [pending, start] = useTransition();
@@ -261,23 +270,47 @@ export function ImportClient() {
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <label className="flex items-center gap-2 text-sm text-muted">
-            <input
-              type="checkbox"
-              checked={skipDuplicates}
-              onChange={(e) => setSkipDuplicates(e.target.checked)}
-              className="accent-accent"
-            />
-            Skip the {p.totals.duplicates} duplicate
-            {p.totals.duplicates === 1 ? "" : "s"}
-          </label>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <label className="flex items-center gap-2 text-sm text-muted">
+              <input
+                type="checkbox"
+                checked={skipDuplicates}
+                onChange={(e) => setSkipDuplicates(e.target.checked)}
+                className="accent-accent"
+              />
+              Skip the {p.totals.duplicates} duplicate
+              {p.totals.duplicates === 1 ? "" : "s"}
+            </label>
+
+            {assignees.length > 0 && (
+              <label className="flex items-center gap-2 text-sm text-muted">
+                Assign to
+                <select
+                  value={assigneeId}
+                  onChange={(e) => setAssigneeId(e.target.value)}
+                  className="input w-auto py-1 text-sm"
+                >
+                  <option value="">No one</option>
+                  {assignees.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.id === defaultAssigneeId ? `${a.name} (me)` : a.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
 
           <button
             type="button"
             disabled={pending || willCreate <= 0 || p.missingNameColumn}
             onClick={() =>
               start(async () => {
-                const res = await commitImportAction(csvText, skipDuplicates);
+                const res = await commitImportAction(
+                  csvText,
+                  skipDuplicates,
+                  assigneeId || null,
+                );
                 if (res.ok) setPhase({ step: "done", result: res.result });
                 else setError(res.error);
               })

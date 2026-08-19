@@ -2,12 +2,21 @@ import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { LEAD_SURFACE_ROLES } from "@/lib/roles";
 import { listLeadStages } from "@/lib/leads";
+import { firstPipelineId } from "@/lib/pipelines";
+import { handoffCandidates } from "@/lib/journey";
 import { ImportClient } from "./_components/import-client";
 
 export default async function ImportLeadsPage() {
   const user = await requireRole([...LEAD_SURFACE_ROLES]);
   const orgId = user.orgId ?? "";
   const stages = orgId ? await listLeadStages(orgId) : [];
+
+  // Imported leads land in the first pipeline, so the people who can be handed
+  // them are the ones who work it. Defaults to the importer when that's them —
+  // a telecaller importing their own list wants those leads on their plate.
+  const entryPipeline = orgId ? await firstPipelineId(orgId) : null;
+  const assignees = entryPipeline ? await handoffCandidates(orgId, entryPipeline) : [];
+  const defaultAssigneeId = assignees.some((a) => a.id === user.id) ? user.id : null;
 
   return (
     <div className="mx-auto max-w-4xl px-4 pb-10 pt-3 sm:px-8">
@@ -32,7 +41,7 @@ export default async function ImportLeadsPage() {
         </p>
       </div>
 
-      <ImportClient />
+      <ImportClient assignees={assignees} defaultAssigneeId={defaultAssigneeId} />
 
       {/* Reference — what the file can contain. */}
       <section className="mt-10 border-t border-border pt-6">
