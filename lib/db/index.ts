@@ -493,6 +493,26 @@ try {
   console.error("[migrate] stage/pipeline repair failed:", err);
 }
 
+// 8. Backfill completed runs for leads that moved pipeline before the history
+//    table was being written. A lead sitting in Site Visit must have passed
+//    through Telecalling, so record that — otherwise the earlier pipeline's
+//    board loses sight of work it actually did.
+try {
+  sqlite.exec(`
+    INSERT INTO lead_pipeline_history (id, org_id, lead_id, pipeline_id, stage_id, completed_at)
+    SELECT lower(hex(randomblob(10))), l.org_id, l.id, p.id, NULL, l.updated_at
+      FROM leads l
+      JOIN pipelines cur ON cur.id = l.pipeline_id
+      JOIN pipelines p   ON p.org_id = l.org_id AND p.position < cur.position
+     WHERE NOT EXISTS (
+       SELECT 1 FROM lead_pipeline_history h
+        WHERE h.lead_id = l.id AND h.pipeline_id = p.id
+     );
+  `);
+} catch (err) {
+  console.error("[migrate] pipeline history backfill failed:", err);
+}
+
 // Shared to-do list (assignable). Created here (after users) with its own
 // upgrade ALTERs so older DBs pick up the newer columns.
 try {

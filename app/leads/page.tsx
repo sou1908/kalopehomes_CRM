@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { listLeads, listLeadStages, tagsForLeads } from "@/lib/leads";
-import { listPipelines, pipelinesForRoles } from "@/lib/pipelines";
+import {
+  listPipelines,
+  pipelinesForRoles,
+  leadsHandedOnFrom,
+} from "@/lib/pipelines";
 import {
   formatValue,
   summarize,
@@ -38,9 +42,20 @@ export default async function LeadsHomePage({
   const stages = active
     ? allStages.filter((s) => s.pipelineId === active.id)
     : [];
-  const leads = active
+  const inPipeline = active
     ? allLeads.filter((l) => l.pipelineId === active.id)
     : [];
+
+  // Leads this pipeline finished and passed on. They've left, so they no longer
+  // match by pipeline_id — but they're this team's completed work, and dropping
+  // them would make the board look like leads had vanished.
+  const handedOnIds = active ? await leadsHandedOnFrom(orgId, active.id) : [];
+  const handedOnSet = new Set(handedOnIds);
+  const handedOn = allLeads.filter(
+    (l) => handedOnSet.has(l.id) && l.pipelineId !== active?.id,
+  );
+  const leads = [...inPipeline, ...handedOn];
+  const movedOn = new Set(handedOn.map((l) => l.id));
 
   const tagsByLead = await tagsForLeads(leads.map((l) => l.id));
   const stats = summarize(leads, stages);
@@ -48,9 +63,16 @@ export default async function LeadsHomePage({
 
   const byStage = new Map<string, typeof leads>();
   for (const s of stages) byStage.set(s.id, []);
+  const exitStageId = stages.find((s) => s.isExit)?.id ?? null;
   const fallbackId = stages[0]?.id;
   for (const lead of leads) {
-    const key = lead.stageId && byStage.has(lead.stageId) ? lead.stageId : fallbackId;
+    // A lead that has moved on belongs in this pipeline's exit column — its
+    // current stage now belongs to whichever pipeline holds it.
+    const key = movedOn.has(lead.id)
+      ? (exitStageId ?? fallbackId)
+      : lead.stageId && byStage.has(lead.stageId)
+        ? lead.stageId
+        : fallbackId;
     if (key) byStage.get(key)!.push(lead);
   }
 
@@ -172,6 +194,7 @@ export default async function LeadsHomePage({
                       tags={tagsByLead.get(lead.id) ?? []}
                       pipelines={allPipelines}
                       now={now}
+                      movedOn={movedOn.has(lead.id)}
                     />
                   ))}
                   {cards.length === 0 && (
@@ -224,6 +247,7 @@ function LeadCard({
   tags,
   pipelines,
   now,
+  movedOn,
 }: {
   lead: {
     id: string;
@@ -239,6 +263,8 @@ function LeadCard({
   tags: LeadTagInfo[];
   pipelines: PipelineInfo[];
   now: number;
+  /** Finished here and passed on — shown for the record, not as live work. */
+  movedOn?: boolean;
 }) {
   const value = formatValue(lead.estimatedValue);
   const fu = followUpState(lead.followUpAt, now);
@@ -256,7 +282,7 @@ function LeadCard({
     <div
       className={`card relative px-3 py-2.5 transition-colors hover:border-accent/40 ${
         due ? "border-l-2" : ""
-      }`}
+      } ${movedOn ? "opacity-60" : ""}`}
       style={
         due
           ? {
@@ -308,8 +334,16 @@ function LeadCard({
         <PipelineMeter pipelines={pipelines} currentPipelineId={lead.pipelineId} />
       </div>
 
+      {movedOn && (
+        <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-success">
+          Handed on
+        </p>
+      )}
+
       <div className="mt-2.5 flex items-center gap-2">
-        <StageMenu leadId={lead.id} value={lead.stageId} stages={stages} />
+        {!movedOn && (
+          <StageMenu leadId={lead.id} value={lead.stageId} stages={stages} />
+        )}
         {fuFmt && due && (
           <span
             className={`ml-auto inline-flex items-center gap-1 font-mono text-[10px] tabular-nums ${

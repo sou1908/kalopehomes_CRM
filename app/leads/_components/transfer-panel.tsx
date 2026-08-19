@@ -52,6 +52,18 @@ export function TransferPanel({
           </select>
         </div>
         <div>
+          <label className="label" htmlFor="tp-note">
+            Note for them <span className="text-muted">(optional)</span>
+          </label>
+          <textarea
+            id="tp-note"
+            name="note"
+            rows={2}
+            placeholder="Anything they should know before the visit"
+            className="input text-sm"
+          />
+        </div>
+        <div>
           <label className="label">Hand to</label>
           <select name="userId" defaultValue="" required className="input text-sm">
             <option value="" disabled>

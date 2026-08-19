@@ -238,6 +238,19 @@ export async function transferLeadAction(
       userId: user.id,
       name: user.name,
     });
+
+    // A handover note is context for whoever picks it up — logged on the lead
+    // so it sits in the timeline they'll read, not buried in the transfer.
+    const note = String(formData.get("note") ?? "").trim();
+    if (note) {
+      await logActivity({
+        orgId: user.orgId,
+        leadId: id,
+        actor: { userId: user.id, name: user.name },
+        kind: "note",
+        body: note,
+      });
+    }
   } catch (err) {
     if (err instanceof TransferError) return { error: err.message };
     throw err;

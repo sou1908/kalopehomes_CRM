@@ -2,7 +2,13 @@ import "server-only";
 import { nanoid } from "nanoid";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "./db";
-import { pipelines, leads, leadActivities, leadStages } from "./db/schema";
+import {
+  pipelines,
+  leads,
+  leadActivities,
+  leadStages,
+  leadPipelineHistory,
+} from "./db/schema";
 import type { Pipeline } from "./db/schema";
 import {
   parsePipelineRoles,
@@ -34,6 +40,23 @@ export function canWorkPipeline(
 ): boolean {
   if (roles.includes("admin")) return true;
   return pipeline.roles.some((r) => roles.includes(r));
+}
+
+/** Leads that finished a pipeline and have since moved on out of it. */
+export async function leadsHandedOnFrom(
+  orgId: string,
+  pipelineId: string,
+): Promise<string[]> {
+  const rows = await db
+    .select({ leadId: leadPipelineHistory.leadId })
+    .from(leadPipelineHistory)
+    .where(
+      and(
+        eq(leadPipelineHistory.orgId, orgId),
+        eq(leadPipelineHistory.pipelineId, pipelineId),
+      ),
+    );
+  return rows.map((r) => r.leadId);
 }
 
 /** Pipelines this user may work. Admins get all of them. */
@@ -171,6 +194,40 @@ export async function setLeadPipeline(
     .limit(1);
   if (before.length === 0) throw new PipelineError("Lead not found.");
   if (before[0].pipelineId === pipelineId) return;
+
+  // Leaving a pipeline completes this lead's run through it. Recorded here
+  // rather than only on journey-completion, so a transfer or an escalation
+  // counts too — otherwise the pipeline it left loses sight of it entirely.
+  const leaving = before[0].pipelineId;
+  if (leaving) {
+    const prior = await db
+      .select({ id: leadPipelineHistory.id })
+      .from(leadPipelineHistory)
+      .where(
+        and(
+          eq(leadPipelineHistory.leadId, leadId),
+          eq(leadPipelineHistory.pipelineId, leaving),
+        ),
+      )
+      .limit(1);
+    if (prior.length === 0) {
+      const current = (
+        await db
+          .select({ stageId: leads.stageId })
+          .from(leads)
+          .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId)))
+          .limit(1)
+      )[0];
+      await db.insert(leadPipelineHistory).values({
+        id: nanoid(21),
+        orgId,
+        leadId,
+        pipelineId: leaving,
+        stageId: current?.stageId ?? null,
+        byUserId: actor.userId,
+      });
+    }
+  }
 
   // Stages belong to a pipeline, so moving pipeline must move the stage too —
   // otherwise the lead lands on the new board still carrying the old pipeline's
