@@ -165,6 +165,39 @@ body {
   color: rgb(var(--c-selection-fg));
 }
 
+/* The journey station currently being worked pulses, so it's findable at a
+   glance on a page of otherwise static rows. Slow and soft on purpose: this is
+   a screen people keep open all day, and a fast blink in peripheral vision
+   becomes an irritation within minutes.
+
+   The motion is ambient — it repeats the state the ring already shows — so it
+   is removed outright for anyone who asks for reduced motion, leaving a plain
+   halo behind. */
+@keyframes journey-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  70% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+.journey-pulse {
+  animation: journey-pulse 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .journey-pulse {
+    animation: none;
+    transform: scale(1.6);
+    opacity: 0.18;
+  }
+}
+
 /* Hide the chunky native scrollbar but keep scrolling (trackpad / shift+wheel / drag). */
 .no-scrollbar {
   scrollbar-width: none; /* Firefox */

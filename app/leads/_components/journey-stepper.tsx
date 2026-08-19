@@ -119,7 +119,15 @@ export function JourneyStepper({
                       just the reading. State is carried by form, so it survives
                       greyscale: filled with a tick is done, a ring is being
                       worked, a hairline outline is not reached. */}
-                  <button
+                  <span className="relative flex items-center justify-center">
+                    {isCurrent && (
+                      <span
+                        aria-hidden
+                        className="journey-pulse absolute h-[22px] w-[22px] rounded-full"
+                        style={{ backgroundColor: pipeline.color }}
+                      />
+                    )}
+                    <button
                     type="button"
                     onClick={() => setSelectedId(pipeline.id)}
                     aria-current={isShown ? "step" : undefined}
@@ -140,8 +148,9 @@ export function JourneyStepper({
                             }
                     }
                   >
-                    {done ? "✓" : ""}
-                  </button>
+                      {done ? "✓" : ""}
+                    </button>
+                  </span>
 
                   <span
                     className={`mt-3 font-display text-[15px] leading-tight tracking-[-0.01em] ${
