@@ -365,6 +365,7 @@ for (const stmt of [
   `ALTER TABLE lead_stages ADD COLUMN pipeline_id TEXT REFERENCES pipelines(id) ON DELETE CASCADE`,
   `ALTER TABLE lead_stages ADD COLUMN is_exit INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE lead_stages ADD COLUMN probability INTEGER`,
+  `ALTER TABLE lead_stages ADD COLUMN fields TEXT NOT NULL DEFAULT '[]'`,
 ]) {
   try {
     sqlite.exec(stmt);

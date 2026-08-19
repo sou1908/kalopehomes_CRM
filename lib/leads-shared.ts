@@ -17,7 +17,21 @@ export type LeadStageInfo = {
   pipelineId?: string | null;
   /** Reaching it completes the pipeline and hands the lead on. */
   isExit?: boolean;
+  /** What to capture while a lead sits in this stage (JSON column, parsed). */
+  fields?: string | null;
 };
+
+/** The questions a stage asks, falling back to its pipeline's legacy set. */
+export function fieldsForStage(
+  stage: { name: string; fields?: string | null } | null,
+  pipelineName: string,
+): JourneyField[] {
+  const own = parseJourneyFields(stage?.fields);
+  if (own.length > 0) return own;
+  // Pipelines defined their questions before stages did; keep reading those so
+  // an org that hasn't been re-seeded still shows something sensible.
+  return journeyFormFor(pipelineName);
+}
 
 /** Client-safe view of a CRM tag row. */
 export type LeadTagInfo = { id: string; name: string; color: string };
@@ -104,6 +118,8 @@ export type PipelineStageSeed = {
   probability: number;
   /** Reaching this stage completes the pipeline and hands the lead on. */
   isExit?: boolean;
+  /** What to capture while a lead sits in this stage. */
+  fields?: JourneyField[];
 };
 
 export const DEFAULT_PIPELINES: Array<{
@@ -121,8 +137,42 @@ export const DEFAULT_PIPELINES: Array<{
     roles: ["telecaller"],
     stages: [
       { name: "New", color: "#6a89a8", kind: "open", position: 10, probability: 10 },
-      { name: "Interested", color: "#f97316", kind: "open", position: 30, probability: 50 },
-      { name: "Not interested", color: "#ef4444", kind: "lost", position: 90, probability: 0 },
+      {
+        name: "Interested",
+        color: "#f97316",
+        kind: "open",
+        position: 30,
+        probability: 50,
+        fields: [
+          { key: "requirement", label: "What they want", type: "text" },
+          { key: "visit_scheduled", label: "Site visit booked for", type: "datetime" },
+        ],
+      },
+      {
+        name: "Not interested",
+        color: "#ef4444",
+        kind: "lost",
+        position: 90,
+        probability: 0,
+        // The loss reason, captured at the moment it's known rather than as a
+        // separate feature nobody remembers to fill in.
+        fields: [
+          {
+            key: "lost_reason",
+            label: "Why not?",
+            type: "select",
+            options: [
+              "Not interested",
+              "Budget too low",
+              "Out of our area",
+              "Already done elsewhere",
+              "Wrong number",
+              "Never reachable",
+            ],
+          },
+          { key: "lost_note", label: "Anything else", type: "text" },
+        ],
+      },
       {
         name: "Handed over",
         color: "#10b981",
@@ -139,10 +189,60 @@ export const DEFAULT_PIPELINES: Array<{
     position: 20,
     roles: ["site_agent"],
     stages: [
-      { name: "Visit scheduled", color: "#d99756", kind: "open", position: 10, probability: 55 },
-      { name: "Visited", color: "#f97316", kind: "open", position: 20, probability: 70 },
-      { name: "Revisit needed", color: "#8c8170", kind: "open", position: 30, probability: 40 },
-      { name: "Visit cancelled", color: "#ef4444", kind: "lost", position: 90, probability: 0 },
+      {
+        name: "Visit scheduled",
+        color: "#d99756",
+        kind: "open",
+        position: 10,
+        probability: 55,
+        fields: [
+          { key: "visit_at", label: "Visit date & time", type: "datetime" },
+          { key: "visit_note", label: "Notes for the visit", type: "text" },
+        ],
+      },
+      {
+        name: "Visited",
+        color: "#f97316",
+        kind: "open",
+        position: 20,
+        probability: 70,
+        fields: [
+          { key: "office_visit", label: "Office visit too?", type: "yesno" },
+          { key: "office_at", label: "Office visit date & time", type: "datetime" },
+          { key: "visit_outcome", label: "How did it go?", type: "text" },
+        ],
+      },
+      {
+        name: "Revisit needed",
+        color: "#8c8170",
+        kind: "open",
+        position: 30,
+        probability: 40,
+        fields: [
+          { key: "revisit_why", label: "Why a revisit?", type: "text" },
+          { key: "revisit_at", label: "Revisit booked for", type: "datetime" },
+        ],
+      },
+      {
+        name: "Visit cancelled",
+        color: "#ef4444",
+        kind: "lost",
+        position: 90,
+        probability: 0,
+        fields: [
+          {
+            key: "cancel_reason",
+            label: "Why cancelled?",
+            type: "select",
+            options: [
+              "Customer postponed",
+              "Customer not available",
+              "Wrong address",
+              "No longer interested",
+            ],
+          },
+        ],
+      },
       {
         name: "Sent to operations",
         color: "#10b981",

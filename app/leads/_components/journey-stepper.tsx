@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import {
-  journeyFormFor,
+  fieldsForStage,
   formatJourneyValue,
   type PipelineInfo,
+  type LeadStageInfo,
   type JourneyData,
   type JourneyField,
 } from "@/lib/leads-shared";
@@ -26,6 +27,8 @@ export function JourneyStepper({
   journey,
   workablePipelineIds,
   nextPipelineName,
+  stages,
+  currentStage,
   passed,
 }: {
   leadId: string;
@@ -36,6 +39,10 @@ export function JourneyStepper({
   workablePipelineIds: string[];
   /** The pipeline the current step hands on to, if any. */
   nextPipelineName?: string | null;
+  /** Every stage, so each pipeline's captured answers can be read back. */
+  stages?: LeadStageInfo[];
+  /** The stage the lead is in — its questions are the ones asked. */
+  currentStage?: LeadStageInfo | null;
   /**
    * Pipelines this lead has finished and left, by id. A lead can be transferred
    * on without its step ever being marked done, and showing that pipeline as
@@ -208,6 +215,8 @@ export function JourneyStepper({
           leadId={leadId}
           shown={shown}
           nextPipelineName={nextPipelineName}
+          stages={stages ?? []}
+          currentStage={currentStage ?? null}
         />
       </div>
     </div>
@@ -218,6 +227,8 @@ function StepPanel({
   leadId,
   shown,
   nextPipelineName,
+  stages,
+  currentStage,
 }: {
   leadId: string;
   shown: {
@@ -228,9 +239,19 @@ function StepPanel({
     mine: boolean;
   };
   nextPipelineName?: string | null;
+  stages: LeadStageInfo[];
+  currentStage: LeadStageInfo | null;
 }) {
   const { pipeline, step, done, isCurrent, mine } = shown;
-  const fields = journeyFormFor(pipeline.name);
+  // Reading back a pipeline means reading every question any of its stages
+  // asks, since the answers accumulate into one bag per pipeline.
+  const fields = isCurrent
+    ? fieldsForStage(currentStage, pipeline.name)
+    : dedupeFields(
+        stages
+          .filter((st) => st.pipelineId === pipeline.id)
+          .flatMap((st) => fieldsForStage(st, pipeline.name)),
+      );
   const recorded = step?.fields ?? {};
   const hasAnswers = fields.some((f) => (recorded[f.key] ?? "").trim() !== "");
 
@@ -248,7 +269,7 @@ function StepPanel({
         <PipelineStepForm
           leadId={leadId}
           pipelineId={pipeline.id}
-          pipelineName={pipeline.name}
+          fields={fieldsForStage(currentStage, pipeline.name)}
           step={step}
         />
       </div>
@@ -276,6 +297,12 @@ function StepPanel({
       )}
     </div>
   );
+}
+
+/** Same key defined by two stages — keep the first. */
+function dedupeFields(fields: JourneyField[]): JourneyField[] {
+  const seen = new Set<string>();
+  return fields.filter((f) => (seen.has(f.key) ? false : (seen.add(f.key), true)));
 }
 
 function Summary({

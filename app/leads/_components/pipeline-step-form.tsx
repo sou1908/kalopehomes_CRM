@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  journeyFormFor,
-  type JourneyField,
-  type JourneyStep,
-} from "@/lib/leads-shared";
+import type { JourneyField, JourneyStep } from "@/lib/leads-shared";
 import { saveJourneyStepAction } from "../actions";
 import { DateTimeField } from "./date-time-field";
 
@@ -12,15 +8,15 @@ import { DateTimeField } from "./date-time-field";
 export function PipelineStepForm({
   leadId,
   pipelineId,
-  pipelineName,
+  fields,
   step,
 }: {
   leadId: string;
   pipelineId: string;
-  pipelineName: string;
+  /** The current stage's questions — different stages ask different things. */
+  fields: JourneyField[];
   step?: JourneyStep;
 }) {
-  const fields = journeyFormFor(pipelineName);
   const done = step?.done ?? false;
   return (
     <form

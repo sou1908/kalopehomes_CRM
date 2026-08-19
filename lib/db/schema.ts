@@ -285,6 +285,10 @@ export const leadStages = sqliteTable("lead_stages", {
   // Reaching this stage completes the pipeline and hands the lead to the next
   // one. Only one per pipeline is meaningful.
   isExit: integer("is_exit", { mode: "boolean" }).notNull().default(false),
+  // What to capture while a lead sits in this stage, as a JSON array of
+  // JourneyField. Per stage rather than per pipeline: "when is the visit" only
+  // makes sense at Visit scheduled, and asking it everywhere is noise.
+  fields: text("fields").notNull().default("[]"),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),

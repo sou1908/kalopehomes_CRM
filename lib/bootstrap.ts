@@ -215,9 +215,33 @@ export function ensureAdminUser(): Promise<void> {
           position: st.position,
           probability: st.probability,
           isExit: st.isExit ?? false,
+          fields: JSON.stringify(st.fields ?? []),
         });
       }
       console.log(`[bootstrap] Seeded ${seed.stages.length} stages for ${p.name}`);
+    }
+
+    // Stages that predate per-stage questions get theirs filled in by name.
+    for (const p of existingPipelines) {
+      const seed = DEFAULT_PIPELINES.find(
+        (d) => d.name.toLowerCase() === p.name.toLowerCase(),
+      );
+      if (!seed) continue;
+      const rows = await db
+        .select({ id: leadStages.id, name: leadStages.name, fields: leadStages.fields })
+        .from(leadStages)
+        .where(and(eq(leadStages.orgId, orgId), eq(leadStages.pipelineId, p.id)));
+      for (const row of rows) {
+        if (row.fields && row.fields !== "[]") continue;
+        const st = seed.stages.find(
+          (x) => x.name.toLowerCase() === row.name.toLowerCase(),
+        );
+        if (!st?.fields?.length) continue;
+        await db
+          .update(leadStages)
+          .set({ fields: JSON.stringify(st.fields) })
+          .where(eq(leadStages.id, row.id));
+      }
     }
 
     const firstPipelineId = existingPipelines[0]?.id;
