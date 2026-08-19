@@ -329,22 +329,12 @@ export default async function LeadDetailPage({
 
         {/* Right rail — Assigned/Transfer + Follow-up/Tags */}
         <aside className="no-scrollbar w-full shrink-0 space-y-4 lg:w-80 lg:min-h-0 lg:overflow-y-auto">
-          {/* Assigned / Transfer */}
+          {/* Transfer / Assigned — handing the lead on is the more frequent
+              action, so it leads and opens by default. */}
           {canWork ? (
           <div className="card p-4">
             <RailTabs
               tabs={[
-                {
-                  id: "assigned",
-                  label: `Assigned${assignees.length ? ` · ${assignees.length}` : ""}`,
-                  content: (
-                    <AssigneesEditor
-                      leadId={lead.id}
-                      assignees={assignees}
-                      members={members}
-                    />
-                  ),
-                },
                 {
                   id: "transfer",
                   label: "Transfer",
@@ -353,6 +343,17 @@ export default async function LeadDetailPage({
                       leadId={lead.id}
                       currentPipelineId={lead.pipelineId}
                       pipelines={pipelines}
+                      members={members}
+                    />
+                  ),
+                },
+                {
+                  id: "assigned",
+                  label: `Assigned${assignees.length ? ` · ${assignees.length}` : ""}`,
+                  content: (
+                    <AssigneesEditor
+                      leadId={lead.id}
+                      assignees={assignees}
                       members={members}
                     />
                   ),
