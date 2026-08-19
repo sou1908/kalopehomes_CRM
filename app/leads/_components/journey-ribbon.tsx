@@ -32,7 +32,7 @@ export function JourneyRibbon({
 
   return (
     <div
-      className="flex w-full items-center gap-2"
+      className="flex w-full items-center gap-2.5"
       role="img"
       aria-label={state
         .map(
@@ -46,8 +46,10 @@ export function JourneyRibbon({
           {i > 0 && (
             <span
               aria-hidden
-              className={`h-px min-w-4 flex-1 ${
-                reached > i - 1 ? "" : "border-t border-dotted border-border"
+              className={`h-[3px] min-w-5 flex-1 rounded-full ${
+                // `border` is very pale on the light theme, so the untravelled
+                // rule uses muted — it has to read as a line, not a smudge.
+                reached > i - 1 ? "" : "border-t-2 border-dotted border-muted/40"
               }`}
               style={
                 reached > i - 1
@@ -59,39 +61,68 @@ export function JourneyRibbon({
             />
           )}
 
-          <span className="inline-flex shrink-0 items-center gap-1.5">
-            <span className="relative flex h-3 w-3 items-center justify-center">
+          <span className="inline-flex shrink-0 items-center gap-2">
+            <span className="relative flex h-[15px] w-[15px] items-center justify-center">
               {isCurrent && (
                 <span
                   aria-hidden
-                  className="journey-pulse absolute h-3 w-3 rounded-full"
+                  className="journey-pulse absolute h-[15px] w-[15px] rounded-full"
                   style={{ backgroundColor: pipeline.color }}
                 />
               )}
               <span
-                className="relative h-3 w-3 rounded-full"
+                className="relative flex h-[15px] w-[15px] items-center justify-center rounded-full text-[8px] font-bold leading-none"
+                // Pipeline colours are chosen by the user and several of them
+                // sit under 3:1 against the light background — Site Visit's
+                // amber is 2.34. A hairline outline defines the dot's edge
+                // whatever fill it carries, rather than overriding their colour.
                 style={
                   done
-                    ? { backgroundColor: pipeline.color }
+                    ? {
+                        backgroundColor: pipeline.color,
+                        color: "#0a0a0b",
+                        boxShadow: "0 0 0 1px rgb(var(--c-muted) / 0.45)",
+                      }
                     : isCurrent
                       ? {
                           backgroundColor: "rgb(var(--c-bg))",
-                          boxShadow: `inset 0 0 0 2px ${pipeline.color}`,
+                          boxShadow: `inset 0 0 0 3px ${pipeline.color}, 0 0 0 1px rgb(var(--c-muted) / 0.45)`,
                         }
                       : {
                           backgroundColor: "rgb(var(--c-bg))",
-                          boxShadow: "inset 0 0 0 1.5px rgb(var(--c-border))",
+                          boxShadow: "inset 0 0 0 2px rgb(var(--c-muted) / 0.5)",
                         }
                 }
-              />
+              >
+                {done ? "✓" : ""}
+              </span>
             </span>
+
             <span
-              className={`font-mono text-[10px] uppercase tracking-[0.14em] ${
-                isCurrent ? "text-text" : done ? "text-muted" : "text-muted/60"
+              className={`font-mono text-[11px] uppercase tracking-[0.12em] ${
+                isCurrent
+                  ? "font-semibold text-text"
+                  : done
+                    ? "font-medium text-text/75"
+                    : "text-muted"
               }`}
             >
               {pipeline.name}
             </span>
+
+            {/* Spelled out on the live one — the dot alone doesn't say which
+                of "finished" and "in progress" it means at this size. */}
+            {isCurrent && (
+              <span
+                className="rounded-full px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.1em]"
+                style={{
+                  backgroundColor: `${pipeline.color}26`,
+                  color: pipeline.color,
+                }}
+              >
+                Here now
+              </span>
+            )}
           </span>
         </Fragment>
       ))}
