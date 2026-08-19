@@ -12,6 +12,7 @@ import {
 import { formatValue, followUpState, parseJourney } from "@/lib/leads-shared";
 import { listAssignableMembers } from "@/lib/members";
 import { listPipelines, canWorkPipeline } from "@/lib/pipelines";
+import { canWorkLead } from "@/lib/access";
 import { listLeadAssignees } from "@/lib/assignees";
 import { initials, colorFromName } from "@/lib/avatar";
 import { StageMenu } from "../_components/stage-menu";
@@ -73,6 +74,9 @@ export default async function LeadDetailPage({
   // Role scoping: you work your own pipeline's step. Answers captured in other
   // pipelines are stripped here rather than hidden in the component, so they
   // never reach the browser at all.
+  // You can open any lead, but only act on one sitting in a pipeline you work.
+  const canWork = await canWorkLead(lead.id, orgId, user.roles);
+  const leadPipeline = pipelines.find((p) => p.id === lead.pipelineId) ?? null;
   const workable = pipelines.filter((p) => canWorkPipeline(p, user.roles));
   const workableIds = workable.map((p) => p.id);
   const fullJourney = parseJourney(lead.journey);
@@ -176,14 +180,27 @@ export default async function LeadDetailPage({
           <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
             Stage
           </span>
-          <StageMenu
-            leadId={lead.id}
-            value={lead.stageId}
-            stages={stages}
-            className="w-full rounded-md border border-border bg-panel px-2.5 py-1.5 text-sm text-text focus:border-accent focus:outline-none"
-          />
+          {canWork ? (
+            <StageMenu
+              leadId={lead.id}
+              value={lead.stageId}
+              stages={stages}
+              className="w-full rounded-md border border-border bg-panel px-2.5 py-1.5 text-sm text-text focus:border-accent focus:outline-none"
+            />
+          ) : (
+            <div className="w-full rounded-md border border-border bg-panel/50 px-2.5 py-1.5 text-sm text-muted">
+              {currentStage?.name ?? "—"}
+            </div>
+          )}
         </label>
       </header>
+
+      {!canWork && (
+        <p className="mt-4 rounded-md border border-marigold/40 bg-marigold/10 px-3 py-2 text-xs text-marigold">
+          This lead is with the {leadPipeline?.name ?? "another"} team. You can read
+          it, but changes are theirs to make.
+        </p>
+      )}
 
       {/* Columns — Activity · Assigned/Transfer begin on the same line */}
       <div className="flex flex-col gap-6 pb-6 pt-6 lg:min-h-0 lg:flex-1 lg:flex-row lg:items-stretch">
@@ -232,7 +249,7 @@ export default async function LeadDetailPage({
 
           <div className="mt-7">
             <SectionLabel>Activity</SectionLabel>
-            <ActivityComposer leadId={lead.id} />
+            {canWork && <ActivityComposer leadId={lead.id} />}
             <div className="mt-3">
               <RailTabs
                 tabs={[
@@ -278,6 +295,7 @@ export default async function LeadDetailPage({
         {/* Right rail — Assigned/Transfer + Follow-up/Tags */}
         <aside className="no-scrollbar w-full shrink-0 space-y-4 lg:w-80 lg:min-h-0 lg:overflow-y-auto">
           {/* Assigned / Transfer */}
+          {canWork ? (
           <div className="card p-4">
             <RailTabs
               tabs={[
@@ -307,8 +325,30 @@ export default async function LeadDetailPage({
               ]}
             />
           </div>
+          ) : (
+            <div className="card p-4">
+              <SectionLabel>Assigned</SectionLabel>
+              {assignees.length === 0 ? (
+                <p className="text-xs text-muted">No one assigned yet.</p>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {assignees.map((a) => (
+                    <li key={a.userId} className="text-muted">
+                      {a.name}
+                      {a.isPrimary && (
+                        <span className="ml-1.5 font-mono text-[10px] uppercase tracking-wide text-accentInk">
+                          primary
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {/* Follow-up / Tags */}
+          {canWork && (
           <div>
             <RailTabs
               initialId={fu === "overdue" ? "followup" : undefined}
@@ -361,18 +401,21 @@ export default async function LeadDetailPage({
               ]}
             />
           </div>
+          )}
         </aside>
       </div>
 
       {/* Footer: meta + subtle delete */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border py-4 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
         <span>Added {dateFmt.format(lead.createdAt)}</span>
+        {canWork && (
         <form action={deleteLeadAction}>
           <input type="hidden" name="leadId" value={lead.id} />
           <button type="submit" className="text-danger/70 hover:text-danger hover:underline">
             Delete lead
           </button>
         </form>
+        )}
       </div>
     </div>
   );

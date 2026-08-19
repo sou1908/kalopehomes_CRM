@@ -40,6 +40,7 @@ import {
 } from "@/lib/assignees";
 import { transferLead, escalateToManager, TransferError } from "@/lib/transfer";
 import { getPipeline, canWorkPipeline } from "@/lib/pipelines";
+import { canWorkLead } from "@/lib/access";
 import { saveJourneyStep } from "@/lib/journey";
 import { CALL_OUTCOMES } from "@/lib/leads-shared";
 
@@ -114,6 +115,7 @@ export async function updateLeadAction(
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return { error: "No organization." };
   const id = String(formData.get("leadId") ?? "");
+  if (!(await canWorkLead(id, user.orgId, user.roles))) return { error: "This lead is in another team's pipeline — you can view it, but not change it." };
 
   try {
     await updateLead(id, user.orgId, {
@@ -149,6 +151,8 @@ export async function updateLeadAction(
 export async function moveLeadStageAction(formData: FormData) {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return;
+  const _leadId = String(formData.get("leadId") ?? "");
+  if (!(await canWorkLead(_leadId, user.orgId, user.roles))) return;
   const id = String(formData.get("leadId") ?? "");
   const stageId = String(formData.get("stageId") ?? "");
   if (!stageId) return;
@@ -175,6 +179,8 @@ function revalidateLead(id: string) {
 export async function addLeadAssigneeAction(formData: FormData) {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return;
+  const _leadId = String(formData.get("leadId") ?? "");
+  if (!(await canWorkLead(_leadId, user.orgId, user.roles))) return;
   const id = String(formData.get("leadId") ?? "");
   const userId = String(formData.get("userId") ?? "");
   if (!userId) return;
@@ -192,6 +198,8 @@ export async function addLeadAssigneeAction(formData: FormData) {
 export async function removeLeadAssigneeAction(formData: FormData) {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return;
+  const _leadId = String(formData.get("leadId") ?? "");
+  if (!(await canWorkLead(_leadId, user.orgId, user.roles))) return;
   const id = String(formData.get("leadId") ?? "");
   const userId = String(formData.get("userId") ?? "");
   if (!userId) return;
@@ -203,6 +211,8 @@ export async function removeLeadAssigneeAction(formData: FormData) {
 export async function setPrimaryAssigneeAction(formData: FormData) {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return;
+  const _leadId = String(formData.get("leadId") ?? "");
+  if (!(await canWorkLead(_leadId, user.orgId, user.roles))) return;
   const id = String(formData.get("leadId") ?? "");
   const userId = String(formData.get("userId") ?? "");
   if (!userId) return;
@@ -218,6 +228,7 @@ export async function transferLeadAction(
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return { error: "No organization." };
   const id = String(formData.get("leadId") ?? "");
+  if (!(await canWorkLead(id, user.orgId, user.roles))) return { error: "This lead is in another team's pipeline — you can view it, but not change it." };
   const pipelineId = String(formData.get("pipelineId") ?? "");
   const userId = String(formData.get("userId") ?? "");
   if (!pipelineId || !userId)
@@ -271,6 +282,8 @@ export async function saveJourneyStepAction(formData: FormData) {
 export async function escalateLeadAction(formData: FormData) {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return;
+  const _leadId = String(formData.get("leadId") ?? "");
+  if (!(await canWorkLead(_leadId, user.orgId, user.roles))) return;
   const id = String(formData.get("leadId") ?? "");
   try {
     await escalateToManager(id, user.orgId, { userId: user.id, name: user.name });
@@ -285,6 +298,8 @@ export async function escalateLeadAction(formData: FormData) {
 export async function setLeadPipelineAction(formData: FormData) {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return;
+  const _leadId = String(formData.get("leadId") ?? "");
+  if (!(await canWorkLead(_leadId, user.orgId, user.roles))) return;
   const id = String(formData.get("leadId") ?? "");
   const pipelineId = String(formData.get("pipelineId") ?? "");
   if (!pipelineId) return;
@@ -371,6 +386,8 @@ function revalidatePipelineSurfaces() {
 export async function setFollowUpAction(formData: FormData) {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return;
+  const _leadId = String(formData.get("leadId") ?? "");
+  if (!(await canWorkLead(_leadId, user.orgId, user.roles))) return;
   const id = String(formData.get("leadId") ?? "");
   await setLeadFollowUp(id, user.orgId, parseDate(formData.get("followUpAt")));
   revalidatePath("/leads");
@@ -381,6 +398,8 @@ export async function setFollowUpAction(formData: FormData) {
 export async function deleteLeadAction(formData: FormData) {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return;
+  const _leadId = String(formData.get("leadId") ?? "");
+  if (!(await canWorkLead(_leadId, user.orgId, user.roles))) return;
   const id = String(formData.get("leadId") ?? "");
   await deleteLead(id, user.orgId);
   redirect("/leads");
@@ -475,6 +494,7 @@ export async function addActivityAction(
   const leadId = String(formData.get("leadId") ?? "");
   const lead = await getLead(leadId, user.orgId);
   if (!lead) return { error: "Lead not found." };
+  if (!(await canWorkLead(leadId, user.orgId, user.roles))) return { error: "This lead is in another team's pipeline — you can view it, but not change it." };
 
   const kindRaw = String(formData.get("kind") ?? "note") as ActivityKind;
   const kind = ACTIVITY_KINDS.includes(kindRaw) ? kindRaw : "note";
@@ -604,6 +624,8 @@ export async function deleteLeadTagAction(formData: FormData) {
 export async function setLeadTagsAction(formData: FormData) {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return;
+  const _leadId = String(formData.get("leadId") ?? "");
+  if (!(await canWorkLead(_leadId, user.orgId, user.roles))) return;
   const leadId = String(formData.get("leadId") ?? "");
   const tagIds = formData.getAll("tagIds").map(String).filter(Boolean);
   const lead = await getLead(leadId, user.orgId);
