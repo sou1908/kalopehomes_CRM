@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUserWithRoles } from "@/lib/auth";
 import { defaultSurface, LEAD_SURFACE_ROLES } from "@/lib/roles";
 import { listLeads, listLeadStages } from "@/lib/leads";
-import { listPipelines } from "@/lib/pipelines";
+import { listPipelines, canWorkPipeline } from "@/lib/pipelines";
 import { summarize, followUpState } from "@/lib/leads-shared";
 import { countActiveTodos } from "@/lib/todos";
 import { unreadNotificationCount } from "@/lib/notifications";
@@ -24,7 +24,7 @@ export default async function LeadsLayout({
   if (!user.roles.some((r) => LEAD_SURFACE_ROLES.includes(r)))
     redirect(defaultSurface(user.roles));
 
-  const [leads, stages, pipelines, todoCount, inboxCount, teamUnread, dmUnread] =
+  const [everyLead, allStages, allPipelines, todoCount, inboxCount, teamUnread, dmUnread] =
     user.orgId
       ? await Promise.all([
           listLeads(user.orgId),
@@ -39,6 +39,17 @@ export default async function LeadsLayout({
         ])
       : [[], [], [], 0, 0, 0, 0];
   const chatCount = teamUnread + dmUnread;
+
+  // The sidebar reflects what this person works: their pipelines, those
+  // pipelines' stages, and the leads inside them. Admins work all of them.
+  const pipelines = allPipelines.filter((p) => canWorkPipeline(p, user.roles));
+  const pipelineIds = new Set(pipelines.map((p) => p.id));
+  const stages = allStages.filter(
+    (st) => !st.pipelineId || pipelineIds.has(st.pipelineId),
+  );
+  const leads = everyLead.filter(
+    (l) => !l.pipelineId || pipelineIds.has(l.pipelineId),
+  );
   const summary = summarize(leads, stages);
 
   // Open-stage leads whose follow-up is overdue or due soon = "needs attention".

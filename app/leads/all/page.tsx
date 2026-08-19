@@ -8,7 +8,7 @@ import {
   leadIdsWithTag,
 } from "@/lib/leads";
 import { listAssignableMembers } from "@/lib/members";
-import { listPipelines } from "@/lib/pipelines";
+import { listPipelines, canWorkPipeline } from "@/lib/pipelines";
 import { assigneesForLeads } from "@/lib/assignees";
 import { formatValue, followUpState } from "@/lib/leads-shared";
 import { initials, colorFromName } from "@/lib/avatar";
@@ -53,13 +53,24 @@ export default async function AllLeadsPage({
   // owner=me → my leads; owner=<id> → that member's leads.
   const ownerId = owner === "me" ? user.id : owner || null;
 
-  const [all, stages, allTags, members, pipelines] = await Promise.all([
+  const [everyLead, allStages, allTags, members, allPipelines] = await Promise.all([
     orgId ? listLeads(orgId) : Promise.resolve([]),
     orgId ? listLeadStages(orgId) : Promise.resolve([]),
     orgId ? listLeadTags(orgId) : Promise.resolve([]),
     orgId ? listAssignableMembers(orgId) : Promise.resolve([]),
     orgId ? listPipelines(orgId) : Promise.resolve([]),
   ]);
+
+  // Role scoping: you see the pipelines you work, their stages, and the leads
+  // sitting in them. Admins work every pipeline, so nothing is filtered for them.
+  const pipelines = allPipelines.filter((p) => canWorkPipeline(p, user.roles));
+  const pipelineIds = new Set(pipelines.map((p) => p.id));
+  const stages = allStages.filter(
+    (st) => !st.pipelineId || pipelineIds.has(st.pipelineId),
+  );
+  const all = everyLead.filter(
+    (l) => !l.pipelineId || pipelineIds.has(l.pipelineId),
+  );
   const memberName = new Map(members.map((m) => [m.id, m.name]));
   const pipelineById = new Map(pipelines.map((d) => [d.id, d]));
   const assigneeMap = await assigneesForLeads(all.map((l) => l.id));
