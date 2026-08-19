@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   journeyFormFor,
+  formatJourneyValue,
   type PipelineInfo,
   type JourneyData,
   type JourneyField,
@@ -291,7 +292,9 @@ function Summary({
       {filled.map((f) => (
         <div key={f.key} className="flex gap-2">
           <dt className="shrink-0 text-muted">{f.label}:</dt>
-          <dd className="min-w-0 break-words text-text">{values[f.key]}</dd>
+          <dd className="min-w-0 break-words text-text">
+            {formatJourneyValue(values[f.key], f.type)}
+          </dd>
         </div>
       ))}
     </dl>

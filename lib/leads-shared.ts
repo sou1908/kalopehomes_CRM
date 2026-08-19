@@ -24,7 +24,12 @@ export type LeadTagInfo = { id: string; name: string; color: string };
 
 // ── [PROTOTYPE] Lead journey / milestones ───────────────────────────────────
 // Each pipeline has a small form the handler fills, then marks the step done.
-export type JourneyFieldType = "text" | "yesno" | "date" | "select";
+export type JourneyFieldType =
+  | "text"
+  | "yesno"
+  | "date"
+  | "datetime"
+  | "select";
 export type JourneyField = {
   key: string;
   label: string;
@@ -39,6 +44,9 @@ export const JOURNEY_FORMS: Record<string, JourneyField[]> = {
     { key: "connected", label: "Call connected?", type: "yesno" },
     { key: "interested", label: "Interested?", type: "yesno" },
     { key: "requirement", label: "Requirement / notes", type: "text" },
+    // Booked on the call, so the site agent receives a lead with the visit
+    // already in the diary rather than having to chase for a slot.
+    { key: "visit_scheduled", label: "Site visit scheduled for", type: "datetime" },
   ],
   "site visit": [
     { key: "visited", label: "Site visited?", type: "yesno" },
@@ -284,6 +292,32 @@ export function formatFollowUp(
     ...(opts.withYear ? { year: "numeric" } : {}),
     ...(hasTime ? { hour: "numeric", minute: "2-digit", hour12: true } : {}),
   }).format(at);
+}
+
+/** Renders a captured journey answer — dates read as dates, not raw strings. */
+export function formatJourneyValue(
+  value: string,
+  type: JourneyFieldType,
+): string {
+  if (type !== "date" && type !== "datetime") return value;
+  const v = value.trim();
+  if (!v) return value;
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?$/.exec(v);
+  if (!m) return value;
+  const hasTime = m[4] != null && !(m[4] === "00" && m[5] === "00");
+  const d = new Date(
+    Number(m[1]),
+    Number(m[2]) - 1,
+    Number(m[3]),
+    Number(m[4] ?? 0),
+    Number(m[5] ?? 0),
+  );
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    ...(hasTime ? { hour: "numeric", minute: "2-digit", hour12: true } : {}),
+  }).format(d);
 }
 
 // Outcomes for a logged call.

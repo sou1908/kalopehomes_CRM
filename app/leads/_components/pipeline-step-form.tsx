@@ -6,6 +6,7 @@ import {
   type JourneyStep,
 } from "@/lib/leads-shared";
 import { saveJourneyStepAction } from "../actions";
+import { DateTimeField } from "./date-time-field";
 
 /** The journey form for ONE pipeline on ONE lead — fill fields, Save or Mark done. */
 export function PipelineStepForm({
@@ -51,7 +52,9 @@ export function Field({ field, value }: { field: JourneyField; value: string }) 
       <span className="mb-1 block text-[11px] uppercase tracking-wide text-muted">
         {field.label}
       </span>
-      {field.type === "text" ? (
+      {field.type === "datetime" ? (
+        <DateTimeField name={id} defaultValue={value} />
+      ) : field.type === "text" ? (
         <textarea name={id} defaultValue={value} rows={2} className="input text-sm" />
       ) : field.type === "date" ? (
         <input type="date" name={id} defaultValue={value} className="input text-sm" />
