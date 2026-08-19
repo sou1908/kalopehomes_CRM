@@ -52,6 +52,13 @@ export function LeadsSidebar({
   const activeOwner = searchParams.get("owner");
   const surfaces = availableSurfaces(user.roles).filter((s) => s.href !== "/leads");
 
+  // New leads start in the first pipeline, so that's the only stage set the
+  // composer may offer. Falls back to everything if pipelines aren't set up.
+  const entryPipelineId = pipelines[0]?.id ?? null;
+  const composerStages = entryPipelineId
+    ? stages.filter((st) => st.pipelineId === entryPipelineId)
+    : stages;
+
   const [open, setOpen] = useState(false);
   // Close the mobile drawer whenever the route or query changes.
   useEffect(() => {
@@ -87,7 +94,7 @@ export function LeadsSidebar({
         </button>
         <Logo />
         <LeadComposer
-          stages={stages}
+          stages={composerStages}
           triggerClassName="btn-primary px-3 py-1.5 text-xs"
           triggerLabel="＋ Lead"
         />
@@ -135,7 +142,7 @@ export function LeadsSidebar({
 
         <div className="px-3 py-3">
           <LeadComposer
-            stages={stages}
+            stages={composerStages}
             triggerClassName="btn-primary w-full text-sm"
             triggerLabel="＋  New lead"
           />
@@ -283,14 +290,29 @@ export function LeadsSidebar({
                 <Icon name="sliders" size={14} />
               </Link>
             </div>
-            {stages.map((stage) => (
-              <StageLink
-                key={stage.id}
-                stage={stage}
-                count={summary.byStage[stage.id] ?? 0}
-                active={pathname === "/leads/all" && activeStage === stage.id}
-              />
-            ))}
+            {pipelines.map((p) => {
+              const own = stages.filter((st) => st.pipelineId === p.id);
+              if (own.length === 0) return null;
+              return (
+                <div key={p.id} className="mb-1">
+                  <div className="flex items-center gap-1.5 px-3 pb-0.5 pt-1.5 text-[11px] text-muted">
+                    <span
+                      className="h-1.5 w-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: p.color }}
+                    />
+                    {p.name}
+                  </div>
+                  {own.map((stage) => (
+                    <StageLink
+                      key={stage.id}
+                      stage={stage}
+                      count={summary.byStage[stage.id] ?? 0}
+                      active={pathname === "/leads/all" && activeStage === stage.id}
+                    />
+                  ))}
+                </div>
+              );
+            })}
           </>
         )}
 
@@ -358,7 +380,7 @@ export function LeadsSidebar({
         </button>
 
         <LeadComposer
-          stages={stages}
+          stages={composerStages}
           triggerClassName="mt-2 flex h-9 w-9 items-center justify-center rounded-md bg-accent text-lg font-semibold text-black hover:bg-accentHover"
           triggerLabel="＋"
         />

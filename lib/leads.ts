@@ -315,6 +315,26 @@ export async function setLeadStage(
 ): Promise<void> {
   const stage = await getStage(stageId, orgId);
   if (!stage) throw new LeadError("Invalid stage.");
+
+  // Stages belong to a pipeline, so a lead can only be moved within the one
+  // it's currently in. Without this, picking another pipeline's stage from a
+  // stale dropdown would leave the lead's stage and pipeline disagreeing.
+  const current = await db
+    .select({ pipelineId: leads.pipelineId })
+    .from(leads)
+    .where(and(eq(leads.id, id), eq(leads.orgId, orgId)))
+    .limit(1);
+  if (current.length === 0) throw new LeadError("Lead not found.");
+  if (
+    stage.pipelineId &&
+    current[0].pipelineId &&
+    stage.pipelineId !== current[0].pipelineId
+  ) {
+    throw new LeadError(
+      `"${stage.name}" belongs to another pipeline. Hand the lead over instead of moving it there.`,
+    );
+  }
+
   await db
     .update(leads)
     .set({ stageId, updatedAt: new Date() })

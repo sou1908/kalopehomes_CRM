@@ -46,7 +46,7 @@ export default async function LeadDetailPage({
   const { id } = await params;
   const orgId = user.orgId ?? "";
 
-  const [lead, stages, allTags, members, pipelines] = await Promise.all([
+  const [lead, allStages, allTags, members, pipelines] = await Promise.all([
     getLead(id, orgId),
     listLeadStages(orgId),
     listLeadTags(orgId),
@@ -54,6 +54,10 @@ export default async function LeadDetailPage({
     listPipelines(orgId),
   ]);
   if (!lead) notFound();
+  // A lead can only move within its own pipeline, so that's all we offer.
+  const stages = lead.pipelineId
+    ? allStages.filter((s) => s.pipelineId === lead.pipelineId)
+    : allStages;
   const currentStage = stages.find((s) => s.id === lead.stageId) ?? null;
 
   const [activities, leadTags, assignees] = await Promise.all([

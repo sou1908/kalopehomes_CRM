@@ -13,6 +13,10 @@ export type LeadStageInfo = {
   kind: LeadStageKind;
   position: number;
   probability?: number | null; // 0–100; null → derived from kind
+  /** The pipeline this stage belongs to — clients filter on it. */
+  pipelineId?: string | null;
+  /** Reaching it completes the pipeline and hands the lead on. */
+  isExit?: boolean;
 };
 
 /** Client-safe view of a CRM tag row. */
