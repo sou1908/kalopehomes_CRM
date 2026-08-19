@@ -296,6 +296,7 @@ export default async function LeadDetailPage({
                 journey={journey}
                 workablePipelineIds={workableIds}
                 nextPipelineName={handoffTo?.name ?? null}
+                passed={passed}
               />
             </div>
 
