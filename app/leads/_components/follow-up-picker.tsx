@@ -16,6 +16,7 @@ export function FollowUpPicker({
     <DateTimeField
       name="followUpAt"
       defaultValue={defaultValue}
+      layout="stacked"
       allDayHint="No time — reminds you any time that day."
     />
   );

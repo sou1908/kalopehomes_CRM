@@ -10,8 +10,10 @@ import { useState } from "react";
  * 18:00, and no attribute, CSS or `lang` overrides it. These read 12-hour
  * whatever the machine is set to.
  *
- * Submits `name` as `yyyy-mm-ddThh:mm`, or just `yyyy-mm-dd` when no hour is
- * chosen, or "" when there's no date at all.
+ * Everything here is optional. No date submits an empty value; a date with no
+ * hour submits the date alone. Nothing blocks the form.
+ *
+ * Submits `name` as `yyyy-mm-ddThh:mm`, `yyyy-mm-dd`, or "".
  */
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -29,6 +31,7 @@ export function DateTimeField({
   dateLabel = "Date",
   timeLabel = "Time",
   allDayHint,
+  layout = "inline",
 }: {
   name: string;
   /** yyyy-mm-dd or yyyy-mm-ddThh:mm, "" when unset. */
@@ -37,6 +40,8 @@ export function DateTimeField({
   timeLabel?: string;
   /** Shown when a date is set but no hour — omit for no hint. */
   allDayHint?: string;
+  /** "inline" puts date and time on one row; "stacked" suits a narrow rail. */
+  layout?: "inline" | "stacked";
 }) {
   const [date, setDate] = useState(defaultValue.slice(0, 10));
 
@@ -61,68 +66,75 @@ export function DateTimeField({
   const combined = date ? (time ? `${date}T${time}` : date) : "";
 
   const box = "input px-2 py-2 text-sm disabled:opacity-50";
+  const inline = layout === "inline";
 
   return (
     <div>
       <input type="hidden" name={name} value={combined} />
 
-      <label className="block">
-        <span className="mb-1 block text-[11px] text-muted">{dateLabel}</span>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="input text-sm"
-          aria-label={dateLabel}
-        />
-      </label>
-
-      <div className="mt-2">
-        <span className="mb-1 block text-[11px] text-muted">{timeLabel}</span>
-        <div className="flex items-center gap-1.5">
-          <select
-            value={hour}
-            onChange={(e) => setHour(e.target.value)}
-            disabled={!date}
-            aria-label="Hour"
-            className={box}
-          >
-            <option value="">—</option>
-            {HOURS.map((h) => (
-              <option key={h} value={h}>
-                {h}
-              </option>
-            ))}
-          </select>
-
-          <span className="text-muted" aria-hidden>
-            :
+      <div className={inline ? "flex flex-wrap items-end gap-x-3 gap-y-2" : ""}>
+        {/* Date */}
+        <label className={inline ? "min-w-[9rem] flex-1" : "block"}>
+          <span className="mb-1 block text-[11px] text-muted">
+            {dateLabel} <span className="text-muted/60">(optional)</span>
           </span>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="input text-sm"
+            aria-label={dateLabel}
+          />
+        </label>
 
-          <select
-            value={minute}
-            onChange={(e) => setMinute(e.target.value)}
-            disabled={!date || hour === ""}
-            aria-label="Minute"
-            className={box}
-          >
-            {MINUTES.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
+        {/* Time */}
+        <div className={inline ? "shrink-0" : "mt-2"}>
+          <span className="mb-1 block text-[11px] text-muted">{timeLabel}</span>
+          <div className="flex items-center gap-1.5">
+            <select
+              value={hour}
+              onChange={(e) => setHour(e.target.value)}
+              disabled={!date}
+              aria-label="Hour"
+              className={box}
+            >
+              <option value="">—</option>
+              {HOURS.map((h) => (
+                <option key={h} value={h}>
+                  {h}
+                </option>
+              ))}
+            </select>
 
-          <select
-            value={meridiem}
-            onChange={(e) => setMeridiem(e.target.value as "am" | "pm")}
-            disabled={!date || hour === ""}
-            aria-label="AM or PM"
-            className={box}
-          >
-            <option value="am">am</option>
-            <option value="pm">pm</option>
-          </select>
+            <span className="text-muted" aria-hidden>
+              :
+            </span>
+
+            <select
+              value={minute}
+              onChange={(e) => setMinute(e.target.value)}
+              disabled={!date || hour === ""}
+              aria-label="Minute"
+              className={box}
+            >
+              {MINUTES.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={meridiem}
+              onChange={(e) => setMeridiem(e.target.value as "am" | "pm")}
+              disabled={!date || hour === ""}
+              aria-label="AM or PM"
+              className={box}
+            >
+              <option value="am">am</option>
+              <option value="pm">pm</option>
+            </select>
+          </div>
         </div>
       </div>
 

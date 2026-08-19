@@ -25,6 +25,7 @@ export function PipelineStepForm({
   return (
     <form
       action={saveJourneyStepAction}
+      noValidate
       className="space-y-2 rounded-lg border border-border bg-panel/40 p-3"
     >
       <input type="hidden" name="leadId" value={leadId} />
