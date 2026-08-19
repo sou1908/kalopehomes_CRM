@@ -38,7 +38,12 @@ import {
   setPrimaryAssignee,
   AssigneeError,
 } from "@/lib/assignees";
-import { transferLead, escalateToManager, TransferError } from "@/lib/transfer";
+import {
+  transferLead,
+  escalateToManager,
+  undoTransfer,
+  TransferError,
+} from "@/lib/transfer";
 import { getPipeline, canWorkPipeline } from "@/lib/pipelines";
 import { canWorkLead } from "@/lib/access";
 import { saveJourneyStep } from "@/lib/journey";
@@ -647,4 +652,29 @@ export async function setLeadTagsAction(formData: FormData) {
   revalidatePath(`/leads/${leadId}`);
   revalidatePath("/leads");
   revalidatePath("/leads/all");
+}
+
+/**
+ * Put a lead back where it was before its last transfer.
+ *
+ * Not gated by `canWorkLead` — by definition the lead has left your pipeline,
+ * so that check would always fail. `undoTransfer` authorises on the pipeline it
+ * came FROM instead, and refuses once the receiving team has started.
+ */
+export async function undoTransferAction(
+  _prev: LeadFormState,
+  formData: FormData,
+): Promise<LeadFormState> {
+  const user = await requireRole([...LEAD_ROLES]);
+  if (!user.orgId) return { error: "No organization." };
+  const id = String(formData.get("leadId") ?? "");
+  try {
+    await undoTransfer(id, user.orgId, { userId: user.id, name: user.name }, user.roles);
+  } catch (err) {
+    if (err instanceof TransferError) return { error: err.message };
+    throw err;
+  }
+  revalidateLead(id);
+  revalidatePipelineSurfaces();
+  return { ok: true };
 }

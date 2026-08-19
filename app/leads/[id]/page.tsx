@@ -28,6 +28,7 @@ import { LeadTagEditor } from "../_components/lead-tag-editor";
 import { ActivityComposer } from "../_components/activity-composer";
 import { ActivityItem } from "../_components/activity-item";
 import { JourneyStepper } from "../_components/journey-stepper";
+import { UndoTransfer } from "../_components/undo-transfer";
 import { RailTabs } from "../_components/rail-tabs";
 import { deleteLeadAction, setFollowUpAction } from "../actions";
 
@@ -96,6 +97,18 @@ export default async function LeadDetailPage({
       },
     ]),
   );
+
+  // The pipeline this lead most recently left. Whoever works it may undo the
+  // transfer — they can't otherwise touch the lead once it has moved on.
+  const cameFrom = (() => {
+    const entries = Object.entries(history)
+      .filter(([pid]) => pid !== lead.pipelineId)
+      .sort((a, b) => b[1].at.getTime() - a[1].at.getTime());
+    const id = entries[0]?.[0];
+    return id ? (pipelines.find((p) => p.id === id) ?? null) : null;
+  })();
+  const canUndo =
+    cameFrom != null && canWorkPipeline(cameFrom, user.roles) && !canWork;
 
   // Named only so a completed step can point at where the lead goes next.
   const handoffTo = lead.pipelineId
@@ -220,10 +233,15 @@ export default async function LeadDetailPage({
       </header>
 
       {!canWork && (
-        <p className="mt-4 rounded-md border border-marigold/40 bg-marigold/10 px-3 py-2 text-xs text-marigold">
-          This lead is with the {leadPipeline?.name ?? "another"} team. You can read
-          it, but changes are theirs to make.
-        </p>
+        <div className="mt-4 rounded-md border border-marigold/40 bg-marigold/10 px-3 py-2 text-xs text-marigold">
+          <p>
+            This lead is with the {leadPipeline?.name ?? "another"} team. You can
+            read it, but changes are theirs to make.
+          </p>
+          {canUndo && cameFrom && (
+            <UndoTransfer leadId={lead.id} fromName={cameFrom.name} />
+          )}
+        </div>
       )}
 
       {/* Columns — Activity · Assigned/Transfer begin on the same line */}
