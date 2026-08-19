@@ -77,9 +77,6 @@ export default async function LeadDetailPage({
 
   const stageColor = currentStage?.color ?? "#6a89a8";
   const isAdmin = user.roles.includes("admin");
-  // Role scoping: you work your own pipeline's step. Answers captured in other
-  // pipelines are stripped here rather than hidden in the component, so they
-  // never reach the browser at all.
   // You can open any lead, but only act on one sitting in a pipeline you work.
   const canWork = await canWorkLead(lead.id, orgId, user.roles);
   const leadPipeline = pipelines.find((p) => p.id === lead.pipelineId) ?? null;
@@ -116,12 +113,11 @@ export default async function LeadDetailPage({
     : null;
   const workable = pipelines.filter((p) => canWorkPipeline(p, user.roles));
   const workableIds = workable.map((p) => p.id);
+  // Every step's answers, readable by anyone working the lead: a site agent
+  // heading out needs the telecaller's notes. Role scoping applies to EDITING
+  // (workableIds below), not to reading what an earlier team recorded.
   const fullJourney = parseJourney(lead.journey);
-  const journey = Object.fromEntries(
-    Object.entries(fullJourney).filter(([pipelineId]) =>
-      workableIds.includes(pipelineId),
-    ),
-  );
+  const journey = fullJourney;
   // Completed milestones, oldest → newest, for the journey timeline.
   const journeySteps = pipelines
     .filter((d) => fullJourney[d.id]?.done || history[d.id])
