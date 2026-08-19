@@ -40,7 +40,7 @@ export const users = sqliteTable("users", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
-// Stackable roles: a user can hold several rows (e.g. super_admin AND
+// Stackable roles: a user can hold several rows (e.g. admin AND
 // telecaller). Permissions derive from the set, not a single column.
 export const userRoles = sqliteTable("user_roles", {
   id: text("id").primaryKey(),
@@ -48,7 +48,7 @@ export const userRoles = sqliteTable("user_roles", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   role: text("role", {
-    enum: ["super_admin", "team_member", "telecaller", "field_agent", "client"],
+    enum: ["admin", "telecaller", "site_agent", "operation_manager"],
   }).notNull(),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
@@ -350,12 +350,7 @@ export const digestState = sqliteTable("digest_state", {
   lastRunDate: text("last_run_date"),
 });
 
-export type Role =
-  | "super_admin"
-  | "team_member"
-  | "telecaller"
-  | "field_agent"
-  | "client";
+export type Role = "admin" | "telecaller" | "site_agent" | "operation_manager";
 
 export type Organization = typeof organizations.$inferSelect;
 export type UserRole = typeof userRoles.$inferSelect;

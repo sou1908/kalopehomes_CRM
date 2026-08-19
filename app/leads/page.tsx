@@ -15,7 +15,7 @@ import { DeskMeter } from "./_components/desk-meter";
 import { Icon } from "@/app/_components/icons";
 
 export default async function LeadsHomePage() {
-  const user = await requireRole(["telecaller", "field_agent", "super_admin"]);
+  const user = await requireRole(["telecaller", "site_agent", "admin"]);
   const orgId = user.orgId ?? "";
   const [leads, stages, desks] = await Promise.all([
     orgId ? listLeads(orgId) : Promise.resolve([]),

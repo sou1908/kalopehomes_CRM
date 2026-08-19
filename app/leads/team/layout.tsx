@@ -11,7 +11,7 @@ export default async function TeamLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await requireRole(["telecaller", "field_agent", "super_admin"]);
+  const user = await requireRole(["telecaller", "site_agent", "admin"]);
   if (!user.orgId) return <>{children}</>;
 
   const [roster, teamUnread, dmUnread] = await Promise.all([

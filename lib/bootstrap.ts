@@ -33,7 +33,7 @@ function slugify(input: string): string {
 /**
  * Ensures the single-org seam is in place:
  *  - a default organization exists,
- *  - the admin user exists (from env) and belongs to it as super_admin,
+ *  - the admin user exists (from env) and belongs to it as admin,
  *  - any pre-existing users are backfilled into the default org.
  * Idempotent; safe to call on every request (memoised).
  */
@@ -181,18 +181,18 @@ export function ensureAdminUser(): Promise<void> {
         .where(and(eq(leads.orgId, orgId), isNull(leads.deskId)));
     }
 
-    // 4. Ensure the admin holds the super_admin role.
+    // 4. Ensure the admin holds the admin role.
     if (adminId) {
       const hasRole = await db
         .select({ id: userRoles.id })
         .from(userRoles)
-        .where(sql`${userRoles.userId} = ${adminId} AND ${userRoles.role} = 'super_admin'`)
+        .where(sql`${userRoles.userId} = ${adminId} AND ${userRoles.role} = 'admin'`)
         .limit(1);
       if (hasRole.length === 0) {
         await db
           .insert(userRoles)
-          .values({ id: nanoid(21), userId: adminId, role: "super_admin" });
-        console.log(`[bootstrap] Granted super_admin to ${email}`);
+          .values({ id: nanoid(21), userId: adminId, role: "admin" });
+        console.log(`[bootstrap] Granted admin to ${email}`);
       }
     }
   })().catch((err) => {

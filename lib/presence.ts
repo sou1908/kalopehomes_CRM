@@ -26,7 +26,7 @@ export async function setPresence(userId: string, presence: Presence): Promise<v
 
 /**
  * Admin override: set another member's presence. Verifies the target belongs to
- * the same org before writing (callers must already be a super_admin).
+ * the same org before writing (callers must already be a admin).
  */
 export async function setMemberPresence(
   orgId: string,
@@ -60,8 +60,6 @@ export async function listTeamPresence(orgId: string): Promise<TeamMemberPresenc
       .from(userRoles)
       .where(eq(userRoles.userId, u.id));
     const roles = roleRows.map((r) => r.role as Role);
-    // Skip client-only / role-less placeholder accounts — the roster is staff.
-    if (roles.length > 0 && roles.every((r) => r === "client")) continue;
     out.push({
       id: u.id,
       name: u.name,

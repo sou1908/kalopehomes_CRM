@@ -42,7 +42,7 @@ export default async function LeadDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const user = await requireRole(["telecaller", "field_agent", "super_admin"]);
+  const user = await requireRole(["telecaller", "site_agent", "admin"]);
   const { id } = await params;
   const orgId = user.orgId ?? "";
 
@@ -65,7 +65,7 @@ export default async function LeadDetailPage({
   const dateFmt = new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" });
 
   const stageColor = currentStage?.color ?? "#6a89a8";
-  const isAdmin = user.roles.includes("super_admin");
+  const isAdmin = user.roles.includes("admin");
   const journey = parseJourney(lead.journey);
   // Completed milestones, oldest → newest, for the journey timeline.
   const journeySteps = desks

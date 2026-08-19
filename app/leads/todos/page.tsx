@@ -11,7 +11,7 @@ import { TodoItem } from "./_components/todo-item";
 import { clearCompletedTodosAction } from "./actions";
 
 // Lead managers assign within lead managers + super admins.
-const ASSIGN_SCOPE: AssignableRole[] = ["telecaller", "field_agent", "super_admin"];
+const ASSIGN_SCOPE: AssignableRole[] = ["telecaller", "site_agent", "admin"];
 
 // datetime-local value for editing (YYYY-MM-DDTHH:mm) in local time.
 function toLocalInput(d: Date | null): string {
@@ -27,7 +27,7 @@ export default async function LeadsTodosPage({
 }: {
   searchParams: Promise<{ filter?: string }>;
 }) {
-  const user = await requireRole(["telecaller", "field_agent", "super_admin"]);
+  const user = await requireRole(["telecaller", "site_agent", "admin"]);
   const { filter: filterRaw } = await searchParams;
   const filter: Filter = (
     ["all", "today", "upcoming", "personal", "tome", "assigned", "done"] as const

@@ -11,7 +11,7 @@ import { PresenceDot } from "../../_components/presence-switcher";
 import { postDmAction } from "../../actions";
 
 function topRoleLabel(roles: Role[]): string {
-  if (roles.includes("super_admin")) return ROLE_LABELS.super_admin;
+  if (roles.includes("admin")) return ROLE_LABELS.admin;
   if (roles.includes("telecaller")) return ROLE_LABELS.telecaller;
   return roles[0] ? ROLE_LABELS[roles[0]] : "No role";
 }
@@ -21,7 +21,7 @@ export default async function DmPage({
 }: {
   params: Promise<{ userId: string }>;
 }) {
-  const user = await requireRole(["telecaller", "field_agent", "super_admin"]);
+  const user = await requireRole(["telecaller", "site_agent", "admin"]);
   const { userId: peerId } = await params;
   if (!user.orgId || peerId === user.id) redirect("/leads/team");
 

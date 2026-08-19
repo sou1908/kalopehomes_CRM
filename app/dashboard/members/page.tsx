@@ -7,15 +7,13 @@ import { MemberRolesForm } from "./member-roles-form";
 import { DeleteMemberButton } from "./delete-member-button";
 
 export default async function MembersPage() {
-  // Dashboard layout already gates super_admin, but re-assert here so this page
+  // Dashboard layout already gates admin, but re-assert here so this page
   // is safe even if linked directly, and to get the admin's org + id.
-  const admin = await requireRole(["super_admin"]);
+  const admin = await requireRole(["admin"]);
   const allMembers = admin.orgId ? await listMembers(admin.orgId) : [];
 
-  // Staff = anyone with a staff role, plus leftover no-role accounts.
-  const staff = allMembers.filter(
-    (m) => !(m.roles.length > 0 && m.roles.every((r) => r === "client")),
-  );
+  // Every account is staff now — there is no client role in this CRM.
+  const staff = allMembers;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-8 sm:py-8">

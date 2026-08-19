@@ -33,7 +33,7 @@ export default async function AllLeadsPage({
     fu?: string;
   }>;
 }) {
-  const user = await requireRole(["telecaller", "field_agent", "super_admin"]);
+  const user = await requireRole(["telecaller", "site_agent", "admin"]);
   const orgId = user.orgId ?? "";
   const sp = await searchParams;
   const { stage, tag, q, filter, owner, desk } = sp;

@@ -15,7 +15,7 @@ export type RosterMember = {
 };
 
 function topRoleLabel(roles: Role[]): string {
-  if (roles.includes("super_admin")) return ROLE_LABELS.super_admin;
+  if (roles.includes("admin")) return ROLE_LABELS.admin;
   if (roles.includes("telecaller")) return ROLE_LABELS.telecaller;
   return roles[0] ? ROLE_LABELS[roles[0]] : "No role";
 }

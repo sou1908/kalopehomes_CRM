@@ -4,9 +4,9 @@ import { listLeads, listLeadStages } from "@/lib/leads";
 import { formatValue, summarize, stageProbability } from "@/lib/leads-shared";
 
 export default async function LeadsAnalyticsPage() {
-  const user = await requireRole(["telecaller", "field_agent", "super_admin"]);
+  const user = await requireRole(["telecaller", "site_agent", "admin"]);
   // Analytics is Lead-Manager-only.
-  if (!user.roles.includes("super_admin")) redirect("/leads");
+  if (!user.roles.includes("admin")) redirect("/leads");
   const orgId = user.orgId ?? "";
   const [leads, stages] = await Promise.all([
     orgId ? listLeads(orgId) : Promise.resolve([]),

@@ -21,8 +21,8 @@ const TODO_INBOX_LINK = "/leads/todos?filter=tome";
 
 // Shared to-dos: on the leads surface they're managed by the lead manager /
 // admin. Assignment is scoped to lead managers + super admins.
-const ROLES = ["telecaller", "field_agent", "super_admin"] as const;
-const ASSIGN_SCOPE: AssignableRole[] = ["telecaller", "field_agent", "super_admin"];
+const ROLES = ["telecaller", "site_agent", "admin"] as const;
+const ASSIGN_SCOPE: AssignableRole[] = ["telecaller", "site_agent", "admin"];
 const PRIORITIES: Priority[] = ["low", "normal", "high", "urgent"];
 
 /** Validate a chosen assignee is in scope for this surface (self always allowed). */

@@ -97,7 +97,7 @@ export async function escalateToManager(
     .select({ id: users.id })
     .from(users)
     .innerJoin(userRoles, eq(userRoles.userId, users.id))
-    .where(and(eq(users.orgId, orgId), eq(userRoles.role, "super_admin")));
+    .where(and(eq(users.orgId, orgId), eq(userRoles.role, "admin")));
   for (const a of admins) {
     if (a.id === actor.userId) continue;
     await createNotification({

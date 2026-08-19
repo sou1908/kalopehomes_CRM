@@ -16,7 +16,7 @@ export async function createMemberAction(
   _prev: MemberFormState,
   formData: FormData,
 ): Promise<MemberFormState> {
-  const admin = await requireRole(["super_admin"]);
+  const admin = await requireRole(["admin"]);
   if (!admin.orgId) return { error: "No organization found for your account." };
   try {
     await createMember({
@@ -38,7 +38,7 @@ export async function deleteMemberAction(
   _prev: MemberFormState,
   formData: FormData,
 ): Promise<MemberFormState> {
-  const admin = await requireRole(["super_admin"]);
+  const admin = await requireRole(["admin"]);
   if (!admin.orgId) return { error: "No organization found for your account." };
   const userId = String(formData.get("userId") ?? "");
   try {
@@ -55,7 +55,7 @@ export async function updateMemberRolesAction(
   _prev: MemberFormState,
   formData: FormData,
 ): Promise<MemberFormState> {
-  const admin = await requireRole(["super_admin"]);
+  const admin = await requireRole(["admin"]);
   if (!admin.orgId) return { error: "No organization found for your account." };
   const userId = String(formData.get("userId") ?? "");
   try {

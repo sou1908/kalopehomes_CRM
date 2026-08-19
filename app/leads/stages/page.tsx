@@ -5,9 +5,9 @@ import { listLeads, listLeadStages } from "@/lib/leads";
 import { StageManager, type StageRowData } from "../_components/stage-manager";
 
 export default async function ManageStagesPage() {
-  const user = await requireRole(["telecaller", "field_agent", "super_admin"]);
+  const user = await requireRole(["telecaller", "site_agent", "admin"]);
   // Stage management is Lead-Manager-only.
-  if (!user.roles.includes("super_admin")) redirect("/leads");
+  if (!user.roles.includes("admin")) redirect("/leads");
   const orgId = user.orgId ?? "";
   const [leads, stages] = await Promise.all([
     orgId ? listLeads(orgId) : Promise.resolve([]),

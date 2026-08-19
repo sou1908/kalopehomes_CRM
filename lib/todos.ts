@@ -29,17 +29,12 @@ export type Todo = {
 export type Member = { id: string; name: string };
 
 export type AssignableRole =
-  | "super_admin"
-  | "team_member"
+  | "admin"
   | "telecaller"
-  | "field_agent";
+  | "site_agent"
+  | "operation_manager";
 
-/**
- * Users in an org that the current surface may assign to-dos to. Scoped by role
- * so a tech-team member can only assign within the tech team (+ super admins),
- * and a lead manager only within lead managers (+ super admins). Magic-link
- * clients are never assignable.
- */
+/** Users in an org that the current surface may assign to-dos to, by role. */
 export async function listAssignableMembers(
   orgId: string,
   allowedRoles: AssignableRole[],

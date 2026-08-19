@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
+import { LEAD_SURFACE_ROLES } from "@/lib/roles";
 import { saveUpload } from "@/lib/storage";
 
 /** Upload an image from the rich-text editor (paste/drop/insert). Returns a URL. */
 export async function POST(req: NextRequest) {
   try {
-    await requireRole(["team_member"]);
+    await requireRole([...LEAD_SURFACE_ROLES]);
   } catch {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

@@ -17,7 +17,7 @@ export type MemberSummary = {
 
 /**
  * All loginable user accounts in an org (members + admins), with their roles.
- * Excludes nothing — the super_admin sees themselves too.
+ * Excludes nothing — the admin sees themselves too.
  */
 export async function listMembers(orgId: string): Promise<MemberSummary[]> {
   const rows = await db
@@ -54,7 +54,7 @@ export async function listAssignableMembers(
     .selectDistinct({ id: users.id, name: users.name })
     .from(users)
     .innerJoin(userRoles, eq(userRoles.userId, users.id))
-    .where(and(eq(users.orgId, orgId), ne(userRoles.role, "client")))
+    .where(eq(users.orgId, orgId))
     .orderBy(users.name);
   return rows;
 }
@@ -98,7 +98,7 @@ export async function createMember(input: {
   return id;
 }
 
-/** Replace a member's role set. Won't strip the last super_admin in the org. */
+/** Replace a member's role set. Won't strip the last admin in the org. */
 export async function setMemberRoles(
   orgId: string,
   userId: string,
@@ -112,8 +112,8 @@ export async function setMemberRoles(
   if (target.length === 0) throw new MemberError("Member not found.");
 
   const next = dedupe(roles);
-  // Guard: never leave the org with zero super_admins.
-  if (!next.includes("super_admin")) {
+  // Guard: never leave the org with zero admins.
+  if (!next.includes("admin")) {
     const others = await db
       .select({ id: userRoles.id })
       .from(userRoles)
@@ -121,7 +121,7 @@ export async function setMemberRoles(
       .where(
         and(
           eq(users.orgId, orgId),
-          eq(userRoles.role, "super_admin"),
+          eq(userRoles.role, "admin"),
           ne(userRoles.userId, userId),
         ),
       )
@@ -142,7 +142,7 @@ export async function setMemberRoles(
 
 /**
  * Permanently delete a member account (cascades their roles + sessions).
- * Guards: can't delete yourself, can't delete the last super_admin (Lead Manager).
+ * Guards: can't delete yourself, can't delete the last admin (Lead Manager).
  */
 export async function deleteMember(
   orgId: string,
@@ -159,11 +159,11 @@ export async function deleteMember(
     .limit(1);
   if (target.length === 0) throw new MemberError("Member not found.");
 
-  // Never delete the last super_admin in the org.
+  // Never delete the last admin in the org.
   const isSuperAdmin = await db
     .select({ id: userRoles.id })
     .from(userRoles)
-    .where(and(eq(userRoles.userId, userId), eq(userRoles.role, "super_admin")))
+    .where(and(eq(userRoles.userId, userId), eq(userRoles.role, "admin")))
     .limit(1);
   if (isSuperAdmin.length > 0) {
     const otherAdmins = await db
@@ -173,7 +173,7 @@ export async function deleteMember(
       .where(
         and(
           eq(users.orgId, orgId),
-          eq(userRoles.role, "super_admin"),
+          eq(userRoles.role, "admin"),
           ne(userRoles.userId, userId),
         ),
       )

@@ -218,7 +218,7 @@ export function LeadsSidebar({
           badgeTone={chatCount > 0 ? "alert" : undefined}
           active={pathname.startsWith("/leads/team")}
         />
-        {user.roles.includes("super_admin") && (
+        {user.roles.includes("admin") && (
           <SideLink
             href="/leads/analytics"
             icon="chart"
@@ -226,7 +226,7 @@ export function LeadsSidebar({
             active={pathname === "/leads/analytics"}
           />
         )}
-        {user.roles.includes("super_admin") && (
+        {user.roles.includes("admin") && (
           <SideLink
             href="/dashboard/members"
             icon="users"
@@ -269,7 +269,7 @@ export function LeadsSidebar({
           </>
         )}
 
-        {user.roles.includes("super_admin") && (
+        {user.roles.includes("admin") && (
           <>
             <div className="flex items-center justify-between px-3 pb-1.5 pt-5">
               <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
@@ -410,7 +410,7 @@ export function LeadsSidebar({
             dot={chatCount > 0}
             active={pathname.startsWith("/leads/team")}
           />
-          {user.roles.includes("super_admin") && (
+          {user.roles.includes("admin") && (
             <RailIcon
               href="/leads/analytics"
               icon="chart"
@@ -418,7 +418,7 @@ export function LeadsSidebar({
               active={pathname === "/leads/analytics"}
             />
           )}
-          {user.roles.includes("super_admin") && (
+          {user.roles.includes("admin") && (
             <RailIcon
               href="/dashboard/members"
               icon="users"

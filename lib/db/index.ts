@@ -233,11 +233,65 @@ try {
   `);
 } catch {}
 
-// Role rename migration: the old `lead_manager` worker role is now `telecaller`
-// (the top role is `super_admin`, relabelled "Lead Manager" in the UI). Convert
-// any existing rows so previously-created managers become telecallers. Idempotent.
+// ── Role migrations ────────────────────────────────────────────────────────
+// The role set has been renamed twice. Both passes are idempotent and run
+// before anything reads roles, so an existing admin never loses access.
+//
+//   lead_manager → telecaller     (2026-06, when the worker role was renamed)
+//   super_admin  → admin          (2026-08, the four-role redesign)
+//   field_agent  → site_agent     (2026-08)
+//
+// `UPDATE OR IGNORE` then `DELETE` handles the edge case where a user somehow
+// holds both the old and the new role: the unique (user_id, role) index would
+// reject a plain UPDATE and abort the whole migration, stranding the rename.
 try {
-  sqlite.exec(`UPDATE user_roles SET role = 'telecaller' WHERE role = 'lead_manager';`);
+  sqlite.exec(`
+    UPDATE OR IGNORE user_roles SET role = 'telecaller' WHERE role = 'lead_manager';
+    DELETE FROM user_roles WHERE role = 'lead_manager';
+
+    UPDATE OR IGNORE user_roles SET role = 'admin' WHERE role = 'super_admin';
+    DELETE FROM user_roles WHERE role = 'super_admin';
+
+    UPDATE OR IGNORE user_roles SET role = 'site_agent' WHERE role = 'field_agent';
+    DELETE FROM user_roles WHERE role = 'field_agent';
+
+    -- Retired roles. This fork has no team workspace and no client portal, so
+    -- these grant nothing; dropping them keeps the table honest.
+    DELETE FROM user_roles WHERE role IN ('team_member', 'client');
+  `);
+} catch {}
+
+// Safety net: if the org somehow ends up with no admin at all (a rename that
+// half-applied on an older build, say), promote the earliest account so the
+// CRM can always be administered. Without this a bad migration is unrecoverable
+// through the UI.
+try {
+  const orphaned = sqlite
+    .prepare(
+      `SELECT u.org_id AS orgId, MIN(u.created_at) AS firstCreated
+         FROM users u
+        WHERE u.org_id IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM user_roles r
+              JOIN users u2 ON u2.id = r.user_id
+             WHERE u2.org_id = u.org_id AND r.role = 'admin'
+          )
+        GROUP BY u.org_id`,
+    )
+    .all() as Array<{ orgId: string; firstCreated: number }>;
+  for (const row of orphaned) {
+    const first = sqlite
+      .prepare(
+        `SELECT id FROM users WHERE org_id = ? ORDER BY created_at ASC LIMIT 1`,
+      )
+      .get(row.orgId) as { id: string } | undefined;
+    if (!first) continue;
+    sqlite
+      .prepare(
+        `INSERT OR IGNORE INTO user_roles (id, user_id, role) VALUES (?, ?, 'admin')`,
+      )
+      .run(`admin-${first.id}`.slice(0, 21), first.id);
+  }
 } catch {}
 
 // Shared to-do list (assignable). Created here (after users) with its own

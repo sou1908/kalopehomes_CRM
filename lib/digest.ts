@@ -108,7 +108,7 @@ export async function runFollowUpDigest(
         .select({ id: users.id })
         .from(users)
         .innerJoin(userRoles, eq(userRoles.userId, users.id))
-        .where(and(eq(users.orgId, orgId), eq(userRoles.role, "super_admin")));
+        .where(and(eq(users.orgId, orgId), eq(userRoles.role, "admin")));
       for (const a of admins) {
         await createNotification({
           userId: a.id,

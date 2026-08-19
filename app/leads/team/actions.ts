@@ -6,7 +6,7 @@ import { postChatMessage, postDirectMessage } from "@/lib/chat";
 import { setPresence, setMemberPresence, PRESENCE_ORDER } from "@/lib/presence";
 import type { Presence } from "@/lib/presence-shared";
 
-const ROLES = ["telecaller", "field_agent", "super_admin"] as const;
+const ROLES = ["telecaller", "site_agent", "admin"] as const;
 
 export type ChatFormState = { ok?: boolean; error?: string } | undefined;
 
@@ -69,7 +69,7 @@ function parsePresence(raw: FormDataEntryValue | null): Presence | null {
 
 /**
  * Set availability. With no `userId` (or your own), updates yourself. Setting
- * someone else's status requires the Lead Manager (super_admin) role.
+ * someone else's status requires the Lead Manager (admin) role.
  */
 export async function updatePresenceAction(formData: FormData) {
   const user = await requireRole([...ROLES]);
@@ -82,7 +82,7 @@ export async function updatePresenceAction(formData: FormData) {
     await setPresence(user.id, presence);
   } else {
     // Only the Lead Manager can change another member's status.
-    if (!user.roles.includes("super_admin")) return;
+    if (!user.roles.includes("admin")) return;
     await setMemberPresence(user.orgId, targetUserId, presence);
   }
   revalidatePath("/leads/team");

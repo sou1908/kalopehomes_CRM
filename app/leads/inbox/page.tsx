@@ -15,7 +15,7 @@ function timeAgo(d: Date): string {
 }
 
 export default async function LeadsInboxPage() {
-  const user = await requireRole(["telecaller", "field_agent", "super_admin"]);
+  const user = await requireRole(["telecaller", "site_agent", "admin"]);
   const items = await listNotifications(user.id);
   const hasUnread = items.some((n) => !n.readAt);
 

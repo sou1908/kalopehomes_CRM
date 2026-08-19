@@ -12,7 +12,7 @@ export default async function DeskJourneyPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const user = await requireRole(["telecaller", "field_agent", "super_admin"]);
+  const user = await requireRole(["telecaller", "site_agent", "admin"]);
   const { id } = await params;
   const orgId = user.orgId ?? "";
 

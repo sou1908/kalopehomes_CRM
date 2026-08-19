@@ -5,7 +5,7 @@ import { defaultSurface } from "@/lib/roles";
 import { logoutAction } from "@/app/(auth)/actions";
 import { ThemeToggle } from "@/app/_components/theme-toggle";
 
-// Admin area — members & roles only. Gated to super_admin.
+// Admin area — members & roles only. Gated to admin.
 export default async function AdminLayout({
   children,
 }: {
@@ -13,7 +13,7 @@ export default async function AdminLayout({
 }) {
   const user = await getCurrentUserWithRoles();
   if (!user) redirect("/login");
-  if (!user.roles.includes("super_admin")) redirect(defaultSurface(user.roles));
+  if (!user.roles.includes("admin")) redirect(defaultSurface(user.roles));
 
   return (
     <div className="min-h-screen">

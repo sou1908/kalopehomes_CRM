@@ -7,7 +7,7 @@ import { PresenceRoster, type RosterMember } from "./_components/presence-roster
 import { postChatAction } from "./actions";
 
 export default async function TeamPage() {
-  const user = await requireRole(["telecaller", "field_agent", "super_admin"]);
+  const user = await requireRole(["telecaller", "site_agent", "admin"]);
   if (!user.orgId) {
     return (
       <div className="px-6 py-10 text-sm text-muted">
@@ -40,7 +40,7 @@ export default async function TeamPage() {
     roles: m.roles,
   }));
 
-  const isAdmin = user.roles.includes("super_admin");
+  const isAdmin = user.roles.includes("admin");
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8">

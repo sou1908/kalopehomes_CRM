@@ -5,7 +5,7 @@ import { listDesks } from "@/lib/desks";
 import { DeskManager, type DeskRowData } from "../_components/desk-manager";
 
 export default async function ManageDesksPage() {
-  const user = await requireRole(["telecaller", "field_agent", "super_admin"]);
+  const user = await requireRole(["telecaller", "site_agent", "admin"]);
   const orgId = user.orgId ?? "";
   const [leads, desks] = await Promise.all([
     orgId ? listLeads(orgId) : Promise.resolve([]),

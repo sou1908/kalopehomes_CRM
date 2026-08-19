@@ -43,7 +43,7 @@ import { saveJourneyStep } from "@/lib/journey";
 import { CALL_OUTCOMES } from "@/lib/leads-shared";
 
 // Telecallers (L1), field agents (L2) and the Lead Manager all work leads.
-const LEAD_ROLES = ["telecaller", "field_agent", "super_admin"] as const;
+const LEAD_ROLES = ["telecaller", "site_agent", "admin"] as const;
 
 export type LeadFormState = { ok?: boolean; error?: string } | undefined;
 
@@ -505,7 +505,7 @@ export async function deleteActivityAction(formData: FormData) {
   try {
     await deleteActivity(id, user.orgId, {
       userId: user.id,
-      isAdmin: user.roles.includes("super_admin"),
+      isAdmin: user.roles.includes("admin"),
     });
   } catch (err) {
     if (!(err instanceof LeadError)) throw err;
@@ -528,7 +528,7 @@ export async function editActivityAction(
   try {
     await updateActivityBody(id, user.orgId, {
       userId: user.id,
-      isAdmin: user.roles.includes("super_admin"),
+      isAdmin: user.roles.includes("admin"),
     }, body);
   } catch (err) {
     if (err instanceof LeadError) return { error: err.message };

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { markNotificationRead, markAllNotificationsRead } from "@/lib/notifications";
 
-const ROLES = ["telecaller", "field_agent", "super_admin"] as const;
+const ROLES = ["telecaller", "site_agent", "admin"] as const;
 
 /** Mark a notification read, then navigate to its linked item. */
 export async function openNotificationAction(formData: FormData) {
