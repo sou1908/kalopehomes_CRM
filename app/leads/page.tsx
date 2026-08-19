@@ -10,6 +10,7 @@ import {
   formatValue,
   summarize,
   followUpState,
+  formatFollowUp,
   type PipelineInfo,
   type LeadStageInfo,
   type LeadTagInfo,
@@ -272,11 +273,7 @@ function LeadCard({
   const value = formatValue(lead.estimatedValue);
   const fu = followUpState(lead.followUpAt, now);
   const due = fu === "overdue" || fu === "soon";
-  const fuFmt =
-    lead.followUpAt &&
-    new Intl.DateTimeFormat("en-IN", { month: "short", day: "numeric" }).format(
-      lead.followUpAt,
-    );
+  const fuFmt = formatFollowUp(lead.followUpAt);
 
   return (
     // A due or overdue lead gets a coloured spine down its edge. Whoever is

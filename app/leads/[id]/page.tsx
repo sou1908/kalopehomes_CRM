@@ -12,6 +12,7 @@ import {
 import {
   formatValue,
   followUpState,
+  formatFollowUp,
   parseJourney,
   telHref,
 } from "@/lib/leads-shared";
@@ -39,11 +40,11 @@ import { UndoTransfer } from "../_components/undo-transfer";
 import { RailTabs } from "../_components/rail-tabs";
 import { deleteLeadAction, setFollowUpAction } from "../actions";
 
-/** Date → yyyy-mm-dd for <input type="date">; "" when unset. */
+/** Date → yyyy-mm-ddThh:mm for <input type="datetime-local">; "" when unset. */
 function toDateInput(d: Date | null): string {
   if (!d) return "";
   const tz = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
+  return new Date(d.getTime() - tz).toISOString().slice(0, 16);
 }
 
 const DT_FMT = new Intl.DateTimeFormat("en-IN", {
@@ -209,7 +210,8 @@ export default async function LeadDetailPage({
                           : "border-border text-muted"
                     }`}
                   >
-                    ⏰ {fu === "overdue" ? "Overdue" : "Follow up"} · {dateFmt.format(lead.followUpAt)}
+                    ⏰ {fu === "overdue" ? "Overdue" : "Follow up"} ·{" "}
+                    {formatFollowUp(lead.followUpAt)}
                   </span>
                 )}
                 {leadTags.map((t) => (
@@ -441,17 +443,20 @@ export default async function LeadDetailPage({
                     <form action={setFollowUpAction} className="card space-y-3 p-4">
                       <input type="hidden" name="leadId" value={lead.id} />
                       <div>
-                        <label className="label" htmlFor="lead-followup">Remind me on</label>
+                        <label className="label" htmlFor="lead-followup">
+                          Remind me on
+                        </label>
                         <input
                           id="lead-followup"
                           name="followUpAt"
-                          type="date"
+                          type="datetime-local"
                           defaultValue={toDateInput(lead.followUpAt)}
                           className="input text-sm"
                         />
                         <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
-                          Overdue &amp; due-soon leads surface in “Needs attention”.
-                          Clear the date to remove the reminder.
+                          Leave the time blank for a whole-day reminder. Overdue
+                          &amp; due-soon leads surface in “Needs attention”; clear
+                          the field to remove it.
                         </p>
                       </div>
                       <button type="submit" className="btn-primary w-full text-xs">

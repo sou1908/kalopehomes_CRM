@@ -267,6 +267,25 @@ export function telHref(phone: string | null | undefined): string | null {
   return `tel:${trimmed.startsWith("+") ? "+" : ""}${digits}`;
 }
 
+/**
+ * A follow-up as it should read. Midnight means the date was set without a
+ * time, so the time is left off rather than shown as a misleading "12:00 am" —
+ * "call after 6pm" and "sometime on the 9th" are different promises.
+ */
+export function formatFollowUp(
+  at: Date | null | undefined,
+  opts: { withYear?: boolean } = {},
+): string | null {
+  if (!at) return null;
+  const hasTime = at.getHours() !== 0 || at.getMinutes() !== 0;
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    ...(opts.withYear ? { year: "numeric" } : {}),
+    ...(hasTime ? { hour: "numeric", minute: "2-digit", hour12: true } : {}),
+  }).format(at);
+}
+
 // Outcomes for a logged call.
 export const CALL_OUTCOMES: string[] = [
   "Connected",

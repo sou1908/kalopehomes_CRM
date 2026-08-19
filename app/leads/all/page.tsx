@@ -10,7 +10,12 @@ import {
 import { listAssignableMembers } from "@/lib/members";
 import { listPipelines, canWorkPipeline } from "@/lib/pipelines";
 import { assigneesForLeads } from "@/lib/assignees";
-import { formatValue, followUpState, telHref } from "@/lib/leads-shared";
+import {
+  formatValue,
+  followUpState,
+  formatFollowUp,
+  telHref,
+} from "@/lib/leads-shared";
 import { initials, colorFromName } from "@/lib/avatar";
 import { StageMenu } from "../_components/stage-menu";
 import { Icon } from "@/app/_components/icons";
@@ -314,7 +319,7 @@ export default async function AllLeadsPage({
                       <span
                         className={`font-mono ${fu === "overdue" ? "text-danger" : "text-marigold"}`}
                       >
-                        {dateFmt.format(lead.followUpAt)}
+                        {formatFollowUp(lead.followUpAt)}
                       </span>
                     )}
                     {formatValue(lead.estimatedValue) && (
@@ -579,7 +584,7 @@ export default async function AllLeadsPage({
                                   : "text-muted"
                             }
                           >
-                            {dateFmt.format(lead.followUpAt)}
+                            {formatFollowUp(lead.followUpAt)}
                           </span>
                         ) : (
                           <span className="text-muted">—</span>
