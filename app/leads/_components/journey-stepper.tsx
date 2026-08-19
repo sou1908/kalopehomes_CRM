@@ -25,7 +25,6 @@ export function JourneyStepper({
   journey,
   workablePipelineIds,
   nextPipelineName,
-  handoffCandidates,
 }: {
   leadId: string;
   pipelines: PipelineInfo[];
@@ -35,8 +34,6 @@ export function JourneyStepper({
   workablePipelineIds: string[];
   /** The pipeline the current step hands on to, if any. */
   nextPipelineName?: string | null;
-  /** People who work that next pipeline. */
-  handoffCandidates?: Array<{ id: string; name: string }>;
 }) {
   if (pipelines.length === 0) {
     return <p className="py-6 text-center text-xs text-muted">No pipelines configured.</p>;
@@ -96,6 +93,14 @@ export function JourneyStepper({
 
             {/* The form shows only on the pipeline the lead is on, and only to
                 someone whose role works it. */}
+            {isCurrent && mine && done && nextPipelineName ? (
+              <div className="mt-2 rounded-md border border-marigold/40 bg-marigold/10 px-3 py-2 text-[11px] leading-relaxed text-marigold">
+                This step is done, but the lead is still with {pipeline.name}.
+                Use <span className="font-medium">Transfer</span> to send it to{" "}
+                {nextPipelineName} and choose who picks it up.
+              </div>
+            ) : null}
+
             {isCurrent && mine ? (
               <div className="mt-2">
                 <PipelineStepForm
@@ -103,8 +108,6 @@ export function JourneyStepper({
                   pipelineId={pipeline.id}
                   pipelineName={pipeline.name}
                   step={step}
-                  nextPipelineName={nextPipelineName}
-                  candidates={handoffCandidates}
                 />
               </div>
             ) : done && mine ? (

@@ -12,9 +12,14 @@ import type { LeadActor } from "./leads";
 /**
  * A lead's step through one pipeline: the captured answers, and completing it.
  *
- * Completing IS the handoff, and has to be. The moment a lead moves on it
- * belongs to the next team, so if the person finishing their step doesn't
- * choose who takes it, nobody can — they've just lost the right to assign it.
+ * Completing a step does NOT move the lead. It parks it on this pipeline's exit
+ * stage and leaves it here, still yours, so you keep the right to transfer it —
+ * handing on is a deliberate second act, done from the Transfer panel, where
+ * you choose both the pipeline and the person.
+ *
+ * (An earlier version moved the lead automatically on completion. That handed
+ * it to the next team instantly and locked the person who'd just finished out
+ * of assigning it to anyone.)
  */
 
 /** Whoever could take a lead next — members whose roles work that pipeline. */
@@ -73,8 +78,6 @@ export async function saveJourneyStep(input: {
   values: Record<string, string>;
   complete: boolean;
   actor: LeadActor;
-  /** Who takes it next. Only meaningful when completing. */
-  handoffUserId?: string | null;
 }): Promise<void> {
   const rows = await db
     .select({ journey: leads.journey })
@@ -121,6 +124,19 @@ export async function saveJourneyStep(input: {
       .where(and(eq(leads.id, input.leadId), eq(leads.orgId, input.orgId)));
   }
 
+  // One row per completed run, so re-confirming done doesn't stack duplicates.
+  const already = await db
+    .select({ id: leadPipelineHistory.id })
+    .from(leadPipelineHistory)
+    .where(
+      and(
+        eq(leadPipelineHistory.leadId, input.leadId),
+        eq(leadPipelineHistory.pipelineId, input.pipelineId),
+      ),
+    )
+    .limit(1);
+  if (already.length > 0) return;
+
   await db.insert(leadPipelineHistory).values({
     id: nanoid(21),
     orgId: input.orgId,
@@ -130,20 +146,5 @@ export async function saveJourneyStep(input: {
     byUserId: input.actor.userId,
   });
 
-  const next = await nextPipeline(input.orgId, input.pipelineId);
-  if (!next) return;
-
-  if (input.handoffUserId) {
-    // Moves the pipeline, assigns them as primary, notifies them, logs it.
-    await transferLead(
-      input.leadId,
-      input.orgId,
-      next.id,
-      input.handoffUserId,
-      input.actor,
-    );
-  } else {
-    // No one named — it lands in the next pipeline's queue for anyone there.
-    await setLeadPipeline(input.leadId, input.orgId, next.id, input.actor);
-  }
+  // Deliberately does not advance the pipeline — see the note above.
 }

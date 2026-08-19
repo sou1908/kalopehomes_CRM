@@ -273,7 +273,6 @@ export async function saveJourneyStepAction(formData: FormData) {
     values,
     complete,
     actor: { userId: user.id, name: user.name },
-    handoffUserId: String(formData.get("handoffUserId") ?? "") || null,
   });
   revalidatePath(`/leads/${leadId}`);
   if (pipelineId) revalidatePath(`/leads/pipeline/${pipelineId}`);

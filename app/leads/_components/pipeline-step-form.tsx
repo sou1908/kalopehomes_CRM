@@ -13,17 +13,11 @@ export function PipelineStepForm({
   pipelineId,
   pipelineName,
   step,
-  nextPipelineName,
-  candidates,
 }: {
   leadId: string;
   pipelineId: string;
   pipelineName: string;
   step?: JourneyStep;
-  /** The pipeline this hands on to, when there is one. */
-  nextPipelineName?: string | null;
-  /** People who work that next pipeline. */
-  candidates?: Array<{ id: string; name: string }>;
 }) {
   const fields = journeyFormFor(pipelineName);
   const done = step?.done ?? false;
@@ -38,35 +32,12 @@ export function PipelineStepForm({
       {fields.map((f) => (
         <Field key={f.key} field={f} value={step?.fields?.[f.key] ?? ""} />
       ))}
-      {/* Completing hands the lead on, so who takes it is chosen here. Once it
-          moves it belongs to the next team, and this person would no longer be
-          able to assign it. */}
-      {nextPipelineName && (
-        <label className="block border-t border-border pt-2.5">
-          <span className="mb-1 block text-[11px] uppercase tracking-wide text-muted">
-            Hand to · {nextPipelineName}
-          </span>
-          <select name="handoffUserId" defaultValue="" className="input text-sm">
-            <option value="">Leave in the {nextPipelineName} queue</option>
-            {(candidates ?? []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
       <div className="flex items-center gap-2 pt-1">
         <button type="submit" name="intent" value="save" className="btn-secondary text-xs">
           Save
         </button>
         <button type="submit" name="intent" value="complete" className="btn-primary text-xs">
-          {done
-            ? "Re-confirm done"
-            : nextPipelineName
-              ? `Mark done → ${nextPipelineName}`
-              : "Mark done"}
+          {done ? "Re-confirm done" : "Mark done"}
         </button>
       </div>
     </form>
