@@ -422,7 +422,11 @@ try {
     "pipeline_id = (SELECT p.id FROM pipelines p WHERE p.org_id = lead_stages.org_id ORDER BY p.position ASC LIMIT 1)";
   sqlite.exec(`
     UPDATE lead_stages SET position = 10 WHERE name = 'New' AND ${inFirst};
-    UPDATE lead_stages SET name = 'Not reachable',  position = 20  WHERE name = 'Qualified'  AND ${inFirst};
+    -- 'Qualified' has no equivalent in the telecaller's vocabulary. Retire it,
+    -- but never silently drop a stage that still holds leads.
+    DELETE FROM lead_stages
+      WHERE name = 'Qualified' AND ${inFirst}
+        AND NOT EXISTS (SELECT 1 FROM leads l WHERE l.stage_id = lead_stages.id);
     UPDATE lead_stages SET name = 'Interested',     position = 30  WHERE name = 'Contacted'  AND ${inFirst};
     UPDATE lead_stages SET name = 'Not interested', kind = 'lost', position = 90
       WHERE name = 'Lost' AND kind = 'lost' AND ${inFirst};

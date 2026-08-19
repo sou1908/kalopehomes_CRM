@@ -109,7 +109,6 @@ export const DEFAULT_PIPELINES: Array<{
     roles: ["telecaller"],
     stages: [
       { name: "New", color: "#6a89a8", kind: "open", position: 10, probability: 10 },
-      { name: "Not reachable", color: "#8c8170", kind: "open", position: 20, probability: 5 },
       { name: "Interested", color: "#f97316", kind: "open", position: 30, probability: 50 },
       { name: "Not interested", color: "#ef4444", kind: "lost", position: 90, probability: 0 },
       {
