@@ -25,7 +25,7 @@ export function UndoTransfer({ leadId, fromName }: { leadId: string; fromName: s
   }, [state, router]);
 
   return (
-    <form action={action} className="mt-2">
+    <form action={action}>
       <input type="hidden" name="leadId" value={leadId} />
       <button
         type="submit"

@@ -233,15 +233,10 @@ export default async function LeadDetailPage({
       </header>
 
       {!canWork && (
-        <div className="mt-4 rounded-md border border-marigold/40 bg-marigold/10 px-3 py-2 text-xs text-marigold">
-          <p>
-            This lead is with the {leadPipeline?.name ?? "another"} team. You can
-            read it, but changes are theirs to make.
-          </p>
-          {canUndo && cameFrom && (
-            <UndoTransfer leadId={lead.id} fromName={cameFrom.name} />
-          )}
-        </div>
+        <p className="mt-4 rounded-md border border-marigold/40 bg-marigold/10 px-3 py-2 text-xs text-marigold">
+          This lead is with the {leadPipeline?.name ?? "another"} team. You can read
+          it, but changes are theirs to make.
+        </p>
       )}
 
       {/* Columns — Activity · Assigned/Transfer begin on the same line */}
@@ -387,6 +382,13 @@ export default async function LeadDetailPage({
                   ))}
                 </ul>
               )}
+            </div>
+          )}
+
+          {canUndo && cameFrom && (
+            <div className="card p-4">
+              <SectionLabel>Sent by mistake?</SectionLabel>
+              <UndoTransfer leadId={lead.id} fromName={cameFrom.name} />
             </div>
           )}
 
