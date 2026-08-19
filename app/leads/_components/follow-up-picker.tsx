@@ -129,6 +129,15 @@ export function FollowUpPicker({
           No time — reminds you any time that day.
         </p>
       )}
+
+      {/* Midnight and "all day" are the same stored value, so say so rather
+          than quietly turning one into the other. */}
+      {date && hour === "12" && minute === "00" && meridiem === "am" && (
+        <p className="mt-1.5 text-[11px] text-muted">
+          12:00 am is stored as a whole-day reminder — it will show as{" "}
+          <span className="text-text">just the date</span>.
+        </p>
+      )}
     </div>
   );
 }
