@@ -13,6 +13,7 @@ import { formatValue, followUpState, parseJourney } from "@/lib/leads-shared";
 import { listAssignableMembers } from "@/lib/members";
 import { listPipelines, canWorkPipeline } from "@/lib/pipelines";
 import { canWorkLead } from "@/lib/access";
+import { nextPipeline, handoffCandidates } from "@/lib/journey";
 import { listLeadAssignees } from "@/lib/assignees";
 import { initials, colorFromName } from "@/lib/avatar";
 import { StageMenu } from "../_components/stage-menu";
@@ -77,6 +78,12 @@ export default async function LeadDetailPage({
   // You can open any lead, but only act on one sitting in a pipeline you work.
   const canWork = await canWorkLead(lead.id, orgId, user.roles);
   const leadPipeline = pipelines.find((p) => p.id === lead.pipelineId) ?? null;
+  // Completing the current step hands the lead on, so the form needs to know
+  // where to and who's there.
+  const handoffTo = lead.pipelineId
+    ? await nextPipeline(orgId, lead.pipelineId)
+    : null;
+  const handoffTargets = handoffTo ? await handoffCandidates(orgId, handoffTo.id) : [];
   const workable = pipelines.filter((p) => canWorkPipeline(p, user.roles));
   const workableIds = workable.map((p) => p.id);
   const fullJourney = parseJourney(lead.journey);
@@ -215,6 +222,8 @@ export default async function LeadDetailPage({
               currentPipelineId={lead.pipelineId}
               journey={journey}
               workablePipelineIds={workableIds}
+              nextPipelineName={handoffTo?.name ?? null}
+              handoffCandidates={handoffTargets}
             />
           </div>
 

@@ -24,6 +24,8 @@ export function JourneyStepper({
   currentPipelineId,
   journey,
   workablePipelineIds,
+  nextPipelineName,
+  handoffCandidates,
 }: {
   leadId: string;
   pipelines: PipelineInfo[];
@@ -31,6 +33,10 @@ export function JourneyStepper({
   journey: JourneyData;
   /** Pipelines this viewer's roles let them work. */
   workablePipelineIds: string[];
+  /** The pipeline the current step hands on to, if any. */
+  nextPipelineName?: string | null;
+  /** People who work that next pipeline. */
+  handoffCandidates?: Array<{ id: string; name: string }>;
 }) {
   if (pipelines.length === 0) {
     return <p className="py-6 text-center text-xs text-muted">No pipelines configured.</p>;
@@ -97,6 +103,8 @@ export function JourneyStepper({
                   pipelineId={pipeline.id}
                   pipelineName={pipeline.name}
                   step={step}
+                  nextPipelineName={nextPipelineName}
+                  candidates={handoffCandidates}
                 />
               </div>
             ) : done && mine ? (
