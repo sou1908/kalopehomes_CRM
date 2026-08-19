@@ -111,7 +111,7 @@ export function LeadsSidebar({
         } ${
           collapsed
             ? "lg:hidden"
-            : "lg:static lg:z-auto lg:h-screen lg:w-60 lg:translate-x-0"
+            : "lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-60 lg:translate-x-0 lg:self-start"
         }`}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -339,7 +339,7 @@ export function LeadsSidebar({
 
       {/* Collapsed icon rail (desktop only) */}
       <aside
-        className={`hidden w-16 shrink-0 flex-col items-center border-r border-border bg-sunken lg:h-screen ${
+        className={`hidden w-16 shrink-0 flex-col items-center border-r border-border bg-sunken lg:sticky lg:top-0 lg:h-screen lg:self-start ${
           collapsed ? "lg:flex" : "lg:hidden"
         }`}
       >

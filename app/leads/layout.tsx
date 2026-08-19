@@ -85,7 +85,10 @@ export default async function LeadsLayout({
       <main className="min-w-0 flex-1">
         {/* Utility strip. In flow rather than floating over the page, because
             /leads/all and /leads/inbox both put controls in this same corner. */}
-        <div className="flex items-center justify-end gap-2 px-4 pt-3 sm:px-8">
+        {/* Sticks with the sidebar — leaving the account menu to scroll away
+            while the nav stayed put would be a strange half-fixed chrome. The
+            background is explicit so page content passes underneath cleanly. */}
+        <div className="sticky top-0 z-30 flex items-center justify-end gap-2 bg-bg px-4 pb-2 pt-3 sm:px-8">
           <ThemeToggle />
           <UserMenu
             user={{
