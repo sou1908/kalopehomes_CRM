@@ -28,6 +28,7 @@ import { LeadTagEditor } from "../_components/lead-tag-editor";
 import { ActivityComposer } from "../_components/activity-composer";
 import { ActivityItem } from "../_components/activity-item";
 import { JourneyStepper } from "../_components/journey-stepper";
+import { JourneyRibbon } from "../_components/journey-ribbon";
 import { UndoTransfer } from "../_components/undo-transfer";
 import { RailTabs } from "../_components/rail-tabs";
 import { deleteLeadAction, setFollowUpAction } from "../actions";
@@ -226,6 +227,15 @@ export default async function LeadDetailPage({
             </div>
           )}
         </label>
+
+        <div className="mt-1 w-full border-t border-border pt-4">
+          <JourneyRibbon
+            pipelines={pipelines}
+            currentPipelineId={lead.pipelineId}
+            journey={fullJourney}
+            passed={passed}
+          />
+        </div>
       </header>
 
       {!canWork && (
