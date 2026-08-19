@@ -111,7 +111,7 @@ export default async function LeadsHomePage({
         <div className="flex flex-wrap items-end gap-x-7 gap-y-4">
           {/* Portfolio figures. Mono + tabular so the columns align and a
               changing number never shifts the ones beside it. */}
-          <div className="no-scrollbar flex max-w-full items-end gap-6 overflow-x-auto">
+          <div className="no-scrollbar flex max-w-full items-end gap-5 overflow-x-auto sm:gap-6">
             <Stat label="Total" value={stats.total} />
             <Stat label="Open" value={stats.open} tone="text-marigold" />
             <Stat label="Won" value={stats.won} tone="text-success" />
@@ -165,7 +165,10 @@ export default async function LeadsHomePage({
               0,
             );
             return (
-              <section key={stage.id} className="flex w-72 shrink-0 flex-col">
+              <section
+                key={stage.id}
+                className="flex w-[80vw] max-w-[18rem] shrink-0 flex-col sm:w-72"
+              >
                 {/* Ruled column head: the stage's own colour carries the
                     identification, so no dot is needed beside the name. */}
                 <div

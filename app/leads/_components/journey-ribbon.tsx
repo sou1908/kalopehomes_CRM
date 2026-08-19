@@ -32,7 +32,7 @@ export function JourneyRibbon({
 
   return (
     <div
-      className="flex w-full items-center gap-2.5"
+      className="no-scrollbar flex w-full items-center gap-2.5 overflow-x-auto"
       role="img"
       aria-label={state
         .map(
@@ -46,7 +46,7 @@ export function JourneyRibbon({
           {i > 0 && (
             <span
               aria-hidden
-              className={`h-[3px] min-w-5 flex-1 rounded-full ${
+              className={`h-[3px] w-6 shrink-0 rounded-full sm:min-w-5 sm:w-auto sm:flex-1 ${
                 // `border` is very pale on the light theme, so the untravelled
                 // rule uses muted — it has to read as a line, not a smudge.
                 reached > i - 1 ? "" : "border-t-2 border-dotted border-muted/40"

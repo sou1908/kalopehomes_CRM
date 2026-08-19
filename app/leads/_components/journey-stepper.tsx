@@ -160,7 +160,7 @@ export function JourneyStepper({
                     {pipeline.name}
                   </span>
 
-                  <span className="mt-1 font-mono text-[9px] uppercase leading-relaxed tracking-[0.14em]">
+                  <span className="mt-1 font-mono text-[8px] uppercase leading-relaxed tracking-[0.1em] sm:text-[9px] sm:tracking-[0.14em]">
                     {done ? (
                       <span className="text-muted">
                         {step?.done ? "Done" : "Handed on"}

@@ -13,6 +13,7 @@ import { assigneesForLeads } from "@/lib/assignees";
 import { formatValue, followUpState, telHref } from "@/lib/leads-shared";
 import { initials, colorFromName } from "@/lib/avatar";
 import { StageMenu } from "../_components/stage-menu";
+import { Icon } from "@/app/_components/icons";
 import { ColumnFilter } from "./_components/column-filter";
 
 export default async function AllLeadsPage({
@@ -262,7 +263,78 @@ export default async function AllLeadsPage({
           No leads match this view.
         </div>
       ) : (
-        <div className="card overflow-hidden">
+        <>
+        {/* ── Phone: a list of cards ──
+            A seven-column table at 375px is not a table. On a phone the job is
+            narrower — find the person, call them, move them on — so each lead
+            becomes a row with the number promoted to a real tap target. The
+            table below takes over from md up. */}
+        <ul className="card divide-y divide-border md:hidden">
+          {leads.map((lead) => {
+            const fu = followUpState(lead.followUpAt, now);
+            const stage = stages.find((s) => s.id === lead.stageId) ?? null;
+            const pipeline = lead.pipelineId ? pipelineById.get(lead.pipelineId) : null;
+            const dial = telHref(lead.phone);
+            return (
+              <li key={lead.id} className="flex items-start gap-3 p-3">
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/leads/${lead.id}`}
+                    className="block font-display text-[17px] leading-tight hover:text-accentInk"
+                  >
+                    {lead.name}
+                  </Link>
+                  {lead.company && (
+                    <div className="mt-0.5 truncate text-[11px] text-muted">
+                      {lead.company}
+                    </div>
+                  )}
+
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+                    {stage && (
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5"
+                        style={{ color: stage.color }}
+                      >
+                        <span
+                          className="h-1.5 w-1.5 rounded-full"
+                          style={{ backgroundColor: stage.color }}
+                        />
+                        {stage.name}
+                      </span>
+                    )}
+                    {pipeline && <span className="text-muted">{pipeline.name}</span>}
+                    {lead.followUpAt && fu !== "later" && (
+                      <span
+                        className={`font-mono ${fu === "overdue" ? "text-danger" : "text-marigold"}`}
+                      >
+                        {dateFmt.format(lead.followUpAt)}
+                      </span>
+                    )}
+                    {formatValue(lead.estimatedValue) && (
+                      <span className="font-mono tabular-nums text-muted">
+                        {formatValue(lead.estimatedValue)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 44px target — this is the whole reason to open the CRM on a phone. */}
+                {dial && (
+                  <a
+                    href={dial}
+                    aria-label={`Call ${lead.name} on ${lead.phone}`}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border text-accentInk transition-colors active:bg-elevated"
+                  >
+                    <Icon name="phone" size={17} />
+                  </a>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="card hidden overflow-hidden md:block">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -525,6 +597,7 @@ export default async function AllLeadsPage({
             </table>
           </div>
         </div>
+        </>
       )}
     </div>
   );
