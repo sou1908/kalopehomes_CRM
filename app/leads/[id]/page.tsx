@@ -172,13 +172,15 @@ export default async function LeadDetailPage({
               {lead.name}
             </h1>
             {telHref(lead.phone) && (
+              // Icon only — the number itself is a click away under View
+              // details, and the header is for acting, not for reading it back.
               <a
                 href={telHref(lead.phone)!}
-                title={`Call ${lead.name}`}
-                className="mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 font-mono text-sm text-accentInk transition-colors hover:border-accent/50 hover:bg-elevated"
+                title={`Call ${lead.name} — ${lead.phone}`}
+                aria-label={`Call ${lead.name} on ${lead.phone}`}
+                className="mt-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-accentInk transition-colors hover:border-accent/50 hover:bg-elevated"
               >
-                <Icon name="phone" size={13} />
-                {lead.phone}
+                <Icon name="phone" size={15} />
               </a>
             )}
 
