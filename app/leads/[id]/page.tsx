@@ -177,92 +177,90 @@ export default async function LeadDetailPage({
 
       {/* Columns — Activity · Assigned/Transfer begin on the same line */}
       <div className="flex flex-col gap-6 pb-6 pt-6 lg:min-h-0 lg:flex-1 lg:flex-row lg:items-stretch">
-        {/* Activity */}
+        {/* Journey first — it's what the person working this lead acts on —
+            then Activity below as the running log. */}
         <section className="no-scrollbar min-w-0 lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
-          <SectionLabel>Activity</SectionLabel>
-          <ActivityComposer leadId={lead.id} />
-          <div className="mt-3">
-            <RailTabs
-              tabs={[
-                {
-                  id: "journey",
-                  label: "Journey",
-                  content: (
-                    <div className="space-y-3">
+          <SectionLabel>Journey</SectionLabel>
+          <div className="card p-4">
+            <JourneyStepper
+              leadId={lead.id}
+              pipelines={pipelines}
+              currentPipelineId={lead.pipelineId}
+              journey={journey}
+            />
+          </div>
+
+          {journeySteps.length > 0 && (
+            <div className="card mt-3 p-4">
+              <SectionLabel>Completed</SectionLabel>
+              <ol className="space-y-4 border-l border-border pl-6">
+                {journeySteps.map((s) => (
+                  <li key={s.id} className="relative">
+                    <span
+                      className="absolute -left-[30px] top-0.5 h-3 w-3 rounded-full ring-4 ring-panel"
+                      style={{ background: s.color }}
+                      aria-hidden
+                    />
+                    <div className="text-xs text-muted">
+                      <span className="font-medium text-text">{s.name}</span>{" "}
+                      completed{s.by ? ` · ${s.by}` : ""}
+                      {s.at ? (
+                        <>
+                          <span className="mx-1" aria-hidden>·</span>
+                          <span className="font-mono text-[10px]">
+                            {DT_FMT.format(s.at)}
+                          </span>
+                        </>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          <div className="mt-7">
+            <SectionLabel>Activity</SectionLabel>
+            <ActivityComposer leadId={lead.id} />
+            <div className="mt-3">
+              <RailTabs
+                tabs={[
+                  {
+                    id: "recent",
+                    label: "Recent",
+                    content: (
                       <div className="card p-4">
-                        <JourneyStepper
+                        <CompactList
+                          items={activities.slice(0, 3)}
                           leadId={lead.id}
-                          pipelines={pipelines}
-                          currentPipelineId={lead.pipelineId}
-                          journey={journey}
+                          meId={user.id}
+                          isAdmin={isAdmin}
+                        />
+                        {activities.length > 3 && (
+                          <p className="mt-3 border-t border-border pt-3 text-center text-[11px] text-muted">
+                            +{activities.length - 3} more — see Timeline
+                          </p>
+                        )}
+                      </div>
+                    ),
+                  },
+                  {
+                    id: "timeline",
+                    label: `Timeline · ${activities.length}`,
+                    content: (
+                      <div className="card p-4">
+                        <TimelineList
+                          items={activities}
+                          leadId={lead.id}
+                          meId={user.id}
+                          isAdmin={isAdmin}
                         />
                       </div>
-                      {journeySteps.length > 0 && (
-                        <div className="card p-4">
-                          <SectionLabel>Journey timeline</SectionLabel>
-                          <ol className="space-y-4 border-l border-border pl-6">
-                            {journeySteps.map((s) => (
-                              <li key={s.id} className="relative">
-                                <span
-                                  className="absolute -left-[30px] top-0.5 h-3 w-3 rounded-full ring-4 ring-panel"
-                                  style={{ background: s.color }}
-                                  aria-hidden
-                                />
-                                <div className="text-xs text-muted">
-                                  <span className="font-medium text-text">{s.name}</span>{" "}
-                                  completed{s.by ? ` · ${s.by}` : ""}
-                                  {s.at ? (
-                                    <>
-                                      <span className="mx-1" aria-hidden>·</span>
-                                      <span className="font-mono text-[10px]">
-                                        {DT_FMT.format(s.at)}
-                                      </span>
-                                    </>
-                                  ) : null}
-                                </div>
-                              </li>
-                            ))}
-                          </ol>
-                        </div>
-                      )}
-                    </div>
-                  ),
-                },
-                {
-                  id: "recent",
-                  label: "Recent",
-                  content: (
-                    <div className="card p-4">
-                      <CompactList
-                        items={activities.slice(0, 3)}
-                        leadId={lead.id}
-                        meId={user.id}
-                        isAdmin={isAdmin}
-                      />
-                      {activities.length > 3 && (
-                        <p className="mt-3 border-t border-border pt-3 text-center text-[11px] text-muted">
-                          +{activities.length - 3} more — see Timeline
-                        </p>
-                      )}
-                    </div>
-                  ),
-                },
-                {
-                  id: "timeline",
-                  label: `Timeline · ${activities.length}`,
-                  content: (
-                    <div className="card p-4">
-                      <TimelineList
-                        items={activities}
-                        leadId={lead.id}
-                        meId={user.id}
-                        isAdmin={isAdmin}
-                      />
-                    </div>
-                  ),
-                },
-              ]}
-            />
+                    ),
+                  },
+                ]}
+              />
+            </div>
           </div>
         </section>
 
