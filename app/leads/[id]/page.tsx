@@ -17,7 +17,7 @@ import { initials, colorFromName } from "@/lib/avatar";
 import { StageMenu } from "../_components/stage-menu";
 import { AssigneesEditor } from "../_components/assignees-editor";
 import { TransferPanel } from "../_components/transfer-panel";
-import { LeadEditForm } from "../_components/lead-edit-form";
+import { LeadDetails } from "../_components/lead-edit-form";
 import { LeadTagEditor } from "../_components/lead-tag-editor";
 import { ActivityComposer } from "../_components/activity-composer";
 import { ActivityItem } from "../_components/activity-item";
@@ -156,6 +156,11 @@ export default async function LeadDetailPage({
           </div>
         </div>
 
+        {/* Details open as popups — see LeadDetails. */}
+        <div className="shrink-0 self-center">
+          <LeadDetails lead={lead} />
+        </div>
+
         {/* Stage lives up here in the header */}
         <label className="block w-full shrink-0 sm:w-48">
           <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
@@ -170,14 +175,8 @@ export default async function LeadDetailPage({
         </label>
       </header>
 
-      {/* Columns — Details · Activity · Assigned/Transfer all begin on the same line */}
+      {/* Columns — Activity · Assigned/Transfer begin on the same line */}
       <div className="flex flex-col gap-6 pb-6 pt-6 lg:min-h-0 lg:flex-1 lg:flex-row lg:items-stretch">
-        {/* Details */}
-        <section className="no-scrollbar lg:w-72 lg:min-h-0 lg:overflow-y-auto">
-          <SectionLabel>Details</SectionLabel>
-          <LeadEditForm lead={lead} />
-        </section>
-
         {/* Activity */}
         <section className="no-scrollbar min-w-0 lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
           <SectionLabel>Activity</SectionLabel>

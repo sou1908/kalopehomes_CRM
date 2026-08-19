@@ -7,9 +7,17 @@ import { LEAD_SOURCES, LEAD_PURPOSES } from "@/lib/leads-shared";
 import { SelectOrOther } from "./select-or-other";
 import type { Lead } from "@/lib/db/schema";
 
-export function LeadEditForm({ lead }: { lead: Lead }) {
+/**
+ * The lead's contact details, reached from two buttons in the page header
+ * rather than a permanent column — the details are reference material, while
+ * the page itself is for working the lead (activity, journey, handover).
+ *
+ * View opens them read-only; Edit opens the form. View can hand straight over
+ * to Edit, so checking a number and then correcting it is one flow.
+ */
+export function LeadDetails({ lead }: { lead: Lead }) {
   const [state, action, pending] = useActionState(updateLeadAction, undefined);
-  const [editing, setEditing] = useState(false);
+  const [mode, setMode] = useState<"closed" | "view" | "edit">("closed");
   const router = useRouter();
   const lastHandled = useRef<unknown>(null);
 
@@ -17,19 +25,52 @@ export function LeadEditForm({ lead }: { lead: Lead }) {
   useEffect(() => {
     if (state?.ok && state !== lastHandled.current) {
       lastHandled.current = state;
-      setEditing(false);
+      setMode("closed");
       router.refresh();
     }
   }, [state, router]);
 
+  // Escape closes whichever popup is open.
+  useEffect(() => {
+    if (mode === "closed") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMode("closed");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mode]);
+
   return (
     <>
-      <ReadOnly lead={lead} onEdit={() => setEditing(true)} />
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setMode("view")}
+          className="rounded-md border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:border-accent/50 hover:text-text"
+        >
+          View details
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("edit")}
+          className="rounded-md border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:border-accent/50 hover:text-text"
+        >
+          Edit
+        </button>
+      </div>
 
-      {editing && (
+      {mode === "view" && (
+        <Modal title="Lead details" onClose={() => setMode("closed")}>
+          <div className="p-5">
+            <ReadOnly lead={lead} onEdit={() => setMode("edit")} />
+          </div>
+        </Modal>
+      )}
+
+      {mode === "edit" && (
         <div
           className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 py-[6vh]"
-          onClick={() => setEditing(false)}
+          onClick={() => setMode("closed")}
         >
           <div
             className="w-full max-w-2xl rounded-xl border border-border bg-bg shadow-2xl"
@@ -42,7 +83,7 @@ export function LeadEditForm({ lead }: { lead: Lead }) {
               </div>
               <button
                 type="button"
-                onClick={() => setEditing(false)}
+                onClick={() => setMode("closed")}
                 className="text-muted hover:text-text"
               >
                 ✕
@@ -148,7 +189,7 @@ export function LeadEditForm({ lead }: { lead: Lead }) {
               <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
                 <button
                   type="button"
-                  onClick={() => setEditing(false)}
+                  onClick={() => setMode("closed")}
                   className="rounded-md border border-border px-3 py-1.5 text-sm text-muted hover:text-text"
                 >
                   Cancel
@@ -166,6 +207,39 @@ export function LeadEditForm({ lead }: { lead: Lead }) {
 }
 
 /** Collapsed read-only view shown until the user clicks Edit. */
+function Modal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 py-[6vh]"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-2xl rounded-xl border border-border bg-bg shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-border px-5 py-3">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="inline-block h-2 w-2 rounded-full bg-accent" />
+            <span className="text-muted">{title}</span>
+          </div>
+          <button type="button" onClick={onClose} className="text-muted hover:text-text">
+            ✕
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function ReadOnly({ lead, onEdit }: { lead: Lead; onEdit: () => void }) {
   // Clean each line: trim and drop stray leading/trailing commas a user may type.
   const tidy = (s: string | null | undefined) =>
