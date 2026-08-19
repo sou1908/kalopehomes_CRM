@@ -331,16 +331,26 @@ export const CALL_OUTCOMES: string[] = [
   "Callback requested",
 ];
 
-// Type of tech work a lead wants — offered in the Purpose dropdown.
+// What the lead wants done — offered in the Purpose dropdown. Interior and
+// modular work, drawn from what Kalope Homes actually advertises: the running
+// campaigns are uPVC interiors, modular kitchen and wall panelling.
+//
+// Not a fixed set — the field keeps "Other → please specify", and any value
+// already stored that isn't listed here still opens as Other with its text
+// intact, so nothing captured before this list changed is lost.
 export const LEAD_PURPOSES: string[] = [
-  "Website",
-  "Web application",
-  "Mobile app",
-  "E-commerce store",
-  "UI/UX design",
-  "Branding / logo",
-  "SEO / digital marketing",
-  "Maintenance / support",
+  "Modular kitchen",
+  "uPVC interiors",
+  "Wall panelling",
+  "Wardrobe",
+  "Full home interior",
+  "False ceiling",
+  "TV unit / living room",
+  "Bedroom",
+  "Flooring",
+  "Painting",
+  "Renovation",
+  "Commercial / office interior",
   "Other",
 ];
 
