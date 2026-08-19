@@ -14,6 +14,8 @@ import { formatValue, followUpState, telHref } from "@/lib/leads-shared";
 import { initials, colorFromName } from "@/lib/avatar";
 import { StageMenu } from "../_components/stage-menu";
 import { Icon } from "@/app/_components/icons";
+// TEMPORARY — testing only, remove before launch.
+import { DangerZone } from "../_components/danger-zone";
 import { ColumnFilter } from "./_components/column-filter";
 
 export default async function AllLeadsPage({
@@ -599,6 +601,11 @@ export default async function AllLeadsPage({
         </div>
         </>
       )}
+
+      {/* ⚠️ TEMPORARY — testing only. Remove this block, the import above,
+          app/leads/_components/danger-zone.tsx, deleteAllLeadsAction in
+          app/leads/actions.ts, and lib/danger.ts before launch. */}
+      {user.roles.includes("admin") && <DangerZone count={everyLead.length} />}
     </div>
   );
 }

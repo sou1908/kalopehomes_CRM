@@ -554,3 +554,6 @@ try {
 
 export const db = drizzle(sqlite, { schema });
 export { schema };
+
+/** The underlying better-sqlite3 handle, for backups and PRAGMA work. */
+export { sqlite };

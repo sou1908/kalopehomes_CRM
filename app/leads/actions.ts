@@ -46,6 +46,8 @@ import {
 } from "@/lib/transfer";
 import { getPipeline, canWorkPipeline } from "@/lib/pipelines";
 import { canWorkLead } from "@/lib/access";
+// TEMPORARY — testing only, remove before launch.
+import { deleteAllLeads } from "@/lib/danger";
 import { saveJourneyStep } from "@/lib/journey";
 import { CALL_OUTCOMES } from "@/lib/leads-shared";
 
@@ -675,6 +677,31 @@ export async function undoTransferAction(
     throw err;
   }
   revalidateLead(id);
+  revalidatePipelineSurfaces();
+  return { ok: true };
+}
+
+/**
+ * ⚠️ TEMPORARY — TESTING ONLY, REMOVE BEFORE LAUNCH. See lib/danger.ts.
+ *
+ * Admin-only, and requires the confirmation phrase to be typed exactly — a
+ * button that empties the database shouldn't be reachable by one stray click.
+ */
+export async function deleteAllLeadsAction(
+  _prev: LeadFormState,
+  formData: FormData,
+): Promise<LeadFormState> {
+  const user = await requireRole(["admin"]);
+  if (!user.orgId) return { error: "No organization." };
+
+  if (String(formData.get("confirm") ?? "").trim() !== "DELETE ALL LEADS") {
+    return { error: "Type DELETE ALL LEADS exactly to confirm." };
+  }
+
+  const { deleted, backup } = await deleteAllLeads(user.orgId);
+  console.warn(
+    `[danger] ${user.email} deleted all ${deleted} leads. Snapshot: ${backup}`,
+  );
   revalidatePipelineSurfaces();
   return { ok: true };
 }
