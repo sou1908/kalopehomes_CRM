@@ -115,72 +115,76 @@ export function JourneyStepper({
               const isShown = pipeline.id === shown.pipeline.id;
               return (
                 <li key={pipeline.id} className="flex flex-1 flex-col items-center">
+                  {/* Only the circle is the control — the labels beneath it are
+                      just the reading. State is carried by form, so it survives
+                      greyscale: filled with a tick is done, a ring is being
+                      worked, a hairline outline is not reached. */}
                   <button
                     type="button"
                     onClick={() => setSelectedId(pipeline.id)}
                     aria-current={isShown ? "step" : undefined}
+                    aria-label={`Show the ${pipeline.name} step`}
                     title={`Show the ${pipeline.name} step`}
-                    className={`group flex w-full flex-col items-center rounded-lg px-1 pb-2 pt-0 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                      isShown ? "bg-elevated" : "hover:bg-elevated/60"
+                    className="relative z-10 flex h-[22px] w-[22px] items-center justify-center rounded-full text-[10px] font-semibold transition-transform hover:scale-125 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-panel"
+                    style={
+                      done
+                        ? { backgroundColor: pipeline.color, color: "#0a0a0b" }
+                        : isCurrent
+                          ? {
+                              backgroundColor: "rgb(var(--c-panel))",
+                              boxShadow: `inset 0 0 0 3px ${pipeline.color}, 0 0 0 4px ${pipeline.color}22`,
+                            }
+                          : {
+                              backgroundColor: "rgb(var(--c-panel))",
+                              boxShadow: "inset 0 0 0 1.5px rgb(var(--c-border))",
+                            }
+                    }
+                  >
+                    {done ? "✓" : ""}
+                  </button>
+
+                  <span
+                    className={`mt-3 font-display text-[15px] leading-tight tracking-[-0.01em] ${
+                      isShown ? "text-text" : isCurrent || done ? "text-text/80" : "text-muted"
                     }`}
                   >
-                    {/* State is carried by FORM, so it survives greyscale:
-                        filled + tick = done, ring = being worked, hairline
-                        outline = not reached. Colour only says which pipeline. */}
-                    <span
-                      className="relative z-10 flex h-[22px] w-[22px] items-center justify-center rounded-full text-[10px] font-semibold transition-transform"
-                      style={
-                        done
-                          ? { backgroundColor: pipeline.color, color: "#0a0a0b" }
-                          : isCurrent
-                            ? {
-                                backgroundColor: "rgb(var(--c-panel))",
-                                boxShadow: `inset 0 0 0 3px ${pipeline.color}, 0 0 0 4px ${pipeline.color}22`,
-                              }
-                            : {
-                                backgroundColor: "rgb(var(--c-panel))",
-                                boxShadow: "inset 0 0 0 1.5px rgb(var(--c-border))",
-                              }
-                      }
-                    >
-                      {done ? "✓" : ""}
-                    </span>
+                    {pipeline.name}
+                  </span>
 
-                    <span
-                      className={`mt-3 font-display text-[15px] leading-tight tracking-[-0.01em] ${
-                        isCurrent || done ? "text-text" : "text-muted"
-                      }`}
-                    >
-                      {pipeline.name}
-                    </span>
-
-                    <span className="mt-1 font-mono text-[9px] uppercase leading-relaxed tracking-[0.14em]">
-                      {done ? (
-                        <span className="text-muted">
-                          {step?.done ? "Done" : "Handed on"}
-                          {step?.at ?? left?.at ? (
-                            <span suppressHydrationWarning>
-                              {" · " +
-                                new Date((step?.at ?? left?.at)!).toLocaleDateString(
-                                  "en-IN",
-                                  { day: "numeric", month: "short" },
-                                )}
-                            </span>
-                          ) : null}
-                        </span>
-                      ) : isCurrent ? (
-                        <span className="text-accentInk">Here now</span>
-                      ) : (
-                        <span className="text-muted/60">Not reached</span>
-                      )}
-                    </span>
-
-                    {done && (step?.by ?? left?.by) && (
-                      <span className="mt-0.5 text-[10px] text-muted/80">
-                        {step?.by ?? left?.by}
+                  <span className="mt-1 font-mono text-[9px] uppercase leading-relaxed tracking-[0.14em]">
+                    {done ? (
+                      <span className="text-muted">
+                        {step?.done ? "Done" : "Handed on"}
+                        {step?.at ?? left?.at ? (
+                          <span suppressHydrationWarning>
+                            {" · " +
+                              new Date((step?.at ?? left?.at)!).toLocaleDateString(
+                                "en-IN",
+                                { day: "numeric", month: "short" },
+                              )}
+                          </span>
+                        ) : null}
                       </span>
+                    ) : isCurrent ? (
+                      <span className="text-accentInk">Here now</span>
+                    ) : (
+                      <span className="text-muted/60">Not reached</span>
                     )}
-                  </button>
+                  </span>
+
+                  {done && (step?.by ?? left?.by) && (
+                    <span className="mt-0.5 text-[10px] text-muted/80">
+                      {step?.by ?? left?.by}
+                    </span>
+                  )}
+
+                  {/* Points down at the panel showing this step's content. */}
+                  <span
+                    aria-hidden
+                    className={`mt-2 h-0 w-0 border-x-[5px] border-x-transparent border-t-[5px] transition-opacity ${
+                      isShown ? "border-t-border opacity-100" : "opacity-0"
+                    }`}
+                  />
                 </li>
               );
             })}
