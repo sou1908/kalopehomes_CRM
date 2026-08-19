@@ -25,6 +25,7 @@ export function JourneyStepper({
   journey,
   workablePipelineIds,
   nextPipelineName,
+  passed,
 }: {
   leadId: string;
   pipelines: PipelineInfo[];
@@ -34,6 +35,12 @@ export function JourneyStepper({
   workablePipelineIds: string[];
   /** The pipeline the current step hands on to, if any. */
   nextPipelineName?: string | null;
+  /**
+   * Pipelines this lead has finished and left, by id. A lead can be transferred
+   * on without its step ever being marked done, and showing that pipeline as
+   * "Pending" when the lead is already past it is simply wrong.
+   */
+  passed?: Record<string, { by: string | null; at: number }>;
 }) {
   if (pipelines.length === 0) {
     return <p className="py-6 text-center text-xs text-muted">No pipelines configured.</p>;
@@ -43,7 +50,9 @@ export function JourneyStepper({
     <ol className="space-y-4">
       {pipelines.map((pipeline, i) => {
         const step = journey[pipeline.id];
-        const done = step?.done ?? false;
+        const left = passed?.[pipeline.id] ?? null;
+        // Either the step was marked done, or the lead has moved past it.
+        const done = (step?.done ?? false) || left != null;
         const isCurrent = pipeline.id === currentPipelineId;
         const mine = workablePipelineIds.includes(pipeline.id);
         const fields = journeyFormFor(pipeline.name);
@@ -74,10 +83,11 @@ export function JourneyStepper({
               <span className="text-sm font-medium">{pipeline.name}</span>
               {done ? (
                 <span className="text-[11px] text-success">
-                  Done{step?.by ? ` · ${step.by}` : ""}
-                  {step?.at ? (
+                  {step?.done ? "Done" : "Handed on"}
+                  {step?.by ?? left?.by ? ` · ${step?.by ?? left?.by}` : ""}
+                  {(step?.at ?? left?.at) ? (
                     <span suppressHydrationWarning>
-                      {" · " + new Date(step.at).toLocaleDateString("en-IN", {
+                      {" · " + new Date((step?.at ?? left?.at)!).toLocaleDateString("en-IN", {
                         day: "numeric",
                         month: "short",
                       })}

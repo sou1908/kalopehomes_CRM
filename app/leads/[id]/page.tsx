@@ -11,7 +11,11 @@ import {
 } from "@/lib/leads";
 import { formatValue, followUpState, parseJourney } from "@/lib/leads-shared";
 import { listAssignableMembers } from "@/lib/members";
-import { listPipelines, canWorkPipeline } from "@/lib/pipelines";
+import {
+  listPipelines,
+  canWorkPipeline,
+  pipelineHistoryForLead,
+} from "@/lib/pipelines";
 import { canWorkLead } from "@/lib/access";
 import { nextPipeline } from "@/lib/journey";
 import { listLeadAssignees } from "@/lib/assignees";
@@ -78,6 +82,21 @@ export default async function LeadDetailPage({
   // You can open any lead, but only act on one sitting in a pipeline you work.
   const canWork = await canWorkLead(lead.id, orgId, user.roles);
   const leadPipeline = pipelines.find((p) => p.id === lead.pipelineId) ?? null;
+  // Pipelines this lead has finished and left. A transfer can move a lead on
+  // without its step ever being marked done, so this is what stops an earlier
+  // pipeline reading "Pending" for a lead that is plainly past it.
+  const history = await pipelineHistoryForLead(lead.id);
+  const memberById = new Map(members.map((m) => [m.id, m.name]));
+  const passed = Object.fromEntries(
+    Object.entries(history).map(([pipelineId, h]) => [
+      pipelineId,
+      {
+        by: h.byUserId ? (memberById.get(h.byUserId) ?? null) : null,
+        at: h.at.getTime(),
+      },
+    ]),
+  );
+
   // Named only so a completed step can point at where the lead goes next.
   const handoffTo = lead.pipelineId
     ? await nextPipeline(orgId, lead.pipelineId)
@@ -92,13 +111,13 @@ export default async function LeadDetailPage({
   );
   // Completed milestones, oldest → newest, for the journey timeline.
   const journeySteps = pipelines
-    .filter((d) => fullJourney[d.id]?.done)
+    .filter((d) => fullJourney[d.id]?.done || history[d.id])
     .map((d) => ({
       id: d.id,
       name: d.name,
       color: d.color,
-      by: fullJourney[d.id]!.by,
-      at: fullJourney[d.id]!.at,
+      by: fullJourney[d.id]?.by ?? passed[d.id]?.by ?? null,
+      at: fullJourney[d.id]?.at ?? passed[d.id]?.at ?? null,
     }))
     .sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
 

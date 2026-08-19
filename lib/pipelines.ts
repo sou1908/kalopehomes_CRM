@@ -59,6 +59,26 @@ export async function leadsHandedOnFrom(
   return rows.map((r) => r.leadId);
 }
 
+/** A lead's completed runs, keyed by pipeline id. */
+export async function pipelineHistoryForLead(
+  leadId: string,
+): Promise<Record<string, { at: Date; byUserId: string | null }>> {
+  const rows = await db
+    .select({
+      pipelineId: leadPipelineHistory.pipelineId,
+      completedAt: leadPipelineHistory.completedAt,
+      byUserId: leadPipelineHistory.byUserId,
+    })
+    .from(leadPipelineHistory)
+    .where(eq(leadPipelineHistory.leadId, leadId));
+
+  const out: Record<string, { at: Date; byUserId: string | null }> = {};
+  for (const r of rows) {
+    if (r.pipelineId) out[r.pipelineId] = { at: r.completedAt, byUserId: r.byUserId };
+  }
+  return out;
+}
+
 /** Pipelines this user may work. Admins get all of them. */
 export function pipelinesForRoles(
   all: PipelineRow[],
