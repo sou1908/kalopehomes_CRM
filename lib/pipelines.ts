@@ -163,9 +163,25 @@ export async function setLeadPipeline(
   if (before.length === 0) throw new PipelineError("Lead not found.");
   if (before[0].pipelineId === pipelineId) return;
 
+  // Stages belong to a pipeline, so moving pipeline must move the stage too —
+  // otherwise the lead lands on the new board still carrying the old pipeline's
+  // stage, and the two disagree. It enters at the new pipeline's first stage.
+  const entry = (
+    await db
+      .select({ id: leadStages.id })
+      .from(leadStages)
+      .where(and(eq(leadStages.orgId, orgId), eq(leadStages.pipelineId, pipelineId)))
+      .orderBy(asc(leadStages.position))
+      .limit(1)
+  )[0];
+
   await db
     .update(leads)
-    .set({ pipelineId, updatedAt: new Date() })
+    .set({
+      pipelineId,
+      ...(entry ? { stageId: entry.id } : {}),
+      updatedAt: new Date(),
+    })
     .where(and(eq(leads.id, leadId), eq(leads.orgId, orgId)));
 
   if (!opts.silent) {

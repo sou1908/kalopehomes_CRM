@@ -467,6 +467,32 @@ try {
   console.error("[migrate] stage dedupe failed:", err);
 }
 
+// 7. Repair leads whose stage belongs to a different pipeline than the lead.
+//    Moving a lead between pipelines used to leave its old stage behind, so it
+//    landed on the new board still carrying the previous pipeline's stage. The
+//    transition now moves the stage too; this fixes any left over, by dropping
+//    them onto the first stage of the pipeline they're actually in.
+try {
+  sqlite.exec(`
+    UPDATE leads
+       SET stage_id = (
+             SELECT s.id FROM lead_stages s
+              WHERE s.pipeline_id = leads.pipeline_id
+              ORDER BY s.position ASC LIMIT 1
+           )
+     WHERE pipeline_id IS NOT NULL
+       AND stage_id IS NOT NULL
+       AND EXISTS (
+             SELECT 1 FROM lead_stages s2
+              WHERE s2.id = leads.stage_id
+                AND s2.pipeline_id IS NOT NULL
+                AND s2.pipeline_id <> leads.pipeline_id
+           );
+  `);
+} catch (err) {
+  console.error("[migrate] stage/pipeline repair failed:", err);
+}
+
 // Shared to-do list (assignable). Created here (after users) with its own
 // upgrade ALTERs so older DBs pick up the newer columns.
 try {

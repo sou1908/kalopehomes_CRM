@@ -478,7 +478,15 @@ export default async function AllLeadsPage({
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <StageMenu leadId={lead.id} value={lead.stageId} stages={stages} />
+                        <StageMenu
+                          leadId={lead.id}
+                          value={lead.stageId}
+                          stages={
+                            lead.pipelineId
+                              ? stages.filter((st) => st.pipelineId === lead.pipelineId)
+                              : stages
+                          }
+                        />
                       </td>
                     </tr>
                   );
