@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+.env
+.env.local
+.env*.local
+data/
+uploads/
+*.db
+*.db-journal
+.DS_Store
+
+# Claude Code local tooling / working notes
+.claude/
+memory/

@@ -1,0 +1,95 @@
+"use client";
+
+import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { addActivityAction } from "../actions";
+import { CALL_OUTCOMES } from "@/lib/leads-shared";
+
+const KINDS: { value: string; label: string }[] = [
+  { value: "note", label: "📝 Note" },
+  { value: "call", label: "📞 Call" },
+  { value: "whatsapp", label: "💬 WhatsApp" },
+  { value: "meeting", label: "🤝 Meeting" },
+];
+
+/** Logs a note / call / whatsapp / meeting onto the lead's timeline. */
+export function ActivityComposer({ leadId }: { leadId: string }) {
+  const [state, action, pending] = useActionState(addActivityAction, undefined);
+  const [kind, setKind] = useState("note");
+  const formRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
+  const lastHandled = useRef<unknown>(null);
+
+  useEffect(() => {
+    if (state?.ok && state !== lastHandled.current) {
+      lastHandled.current = state;
+      formRef.current?.reset();
+      setKind("note");
+      router.refresh();
+    }
+  }, [state, router]);
+
+  const isCall = kind === "call";
+
+  return (
+    <form ref={formRef} action={action} className="card space-y-2 p-3">
+      <input type="hidden" name="leadId" value={leadId} />
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          name="kind"
+          value={kind}
+          onChange={(e) => setKind(e.target.value)}
+          className="rounded-md border border-border bg-panel px-2 py-1 text-xs"
+        >
+          {KINDS.map((k) => (
+            <option key={k.value} value={k.value}>
+              {k.label}
+            </option>
+          ))}
+        </select>
+
+        {isCall && (
+          <select
+            name="outcome"
+            defaultValue={CALL_OUTCOMES[0]}
+            className="rounded-md border border-border bg-panel px-2 py-1 text-xs"
+          >
+            {CALL_OUTCOMES.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
+        )}
+
+        <span className="text-[11px] text-muted">
+          {isCall ? "Call outcome + remark" : "Log an interaction"}
+        </span>
+      </div>
+
+      <textarea
+        name="body"
+        rows={2}
+        placeholder={
+          isCall
+            ? "Remark (optional) — e.g. asked to call back after 6pm"
+            : "What happened? (e.g. wants a quote by Friday)"
+        }
+        className="input text-sm"
+      />
+      {state?.error && <div className="text-[11px] text-danger">{state.error}</div>}
+      <div className="flex items-center justify-between gap-2">
+        <label
+          className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] text-muted"
+          title="Private notes are visible only to you — never shared or transferred"
+        >
+          <input type="checkbox" name="private" value="1" className="accent-accent" />
+          🔒 Private (only you)
+        </label>
+        <button type="submit" disabled={pending} className="btn-primary text-xs">
+          {pending ? "Logging…" : "Log activity"}
+        </button>
+      </div>
+    </form>
+  );
+}
