@@ -266,12 +266,13 @@ function StepPanel({
             {nextPipelineName} and choose who picks it up.
           </div>
         )}
-        <PipelineStepForm
-          leadId={leadId}
-          pipelineId={pipeline.id}
-          fields={fieldsForStage(currentStage, pipeline.name)}
-          step={step}
-        />
+        {/* Answers are captured in the Activity composer above — recorded in
+            the same breath as the note. This is the read-back, plus the way to
+            close the step off. */}
+        {hasAnswers && <Summary fields={fields} values={recorded} />}
+        <div className={hasAnswers ? "mt-3" : ""}>
+          <PipelineStepForm leadId={leadId} pipelineId={pipeline.id} fields={[]} step={step} />
+        </div>
       </div>
     );
   }

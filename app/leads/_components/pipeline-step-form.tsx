@@ -31,9 +31,11 @@ export function PipelineStepForm({
         <Field key={f.key} field={f} value={step?.fields?.[f.key] ?? ""} />
       ))}
       <div className="flex items-center gap-2 pt-1">
-        <button type="submit" name="intent" value="save" className="btn-secondary text-xs">
-          Save
-        </button>
+        {fields.length > 0 && (
+          <button type="submit" name="intent" value="save" className="btn-secondary text-xs">
+            Save
+          </button>
+        )}
         <button type="submit" name="intent" value="complete" className="btn-primary text-xs">
           {done ? "Re-confirm done" : "Mark done"}
         </button>

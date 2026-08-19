@@ -3,7 +3,8 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addActivityAction } from "../actions";
-import { CALL_OUTCOMES } from "@/lib/leads-shared";
+import { CALL_OUTCOMES, type JourneyField } from "@/lib/leads-shared";
+import { DateTimeField } from "./date-time-field";
 
 const KINDS: { value: string; label: string }[] = [
   { value: "note", label: "📝 Note" },
@@ -12,8 +13,30 @@ const KINDS: { value: string; label: string }[] = [
   { value: "meeting", label: "🤝 Meeting" },
 ];
 
-/** Logs a note / call / whatsapp / meeting onto the lead's timeline. */
-export function ActivityComposer({ leadId }: { leadId: string }) {
+/**
+ * Logs a note / call / whatsapp / meeting onto the lead's timeline — and
+ * captures whatever the lead's current stage needs while it's here.
+ *
+ * The structured bits sit with the log rather than in a separate form because
+ * they're recorded in the same breath: a telecaller who books a visit is
+ * writing "they want a visit Saturday" and setting the date in one action, not
+ * two. Whatever is filled in is saved against the lead's journey alongside the
+ * activity, so the site agent still reads it as structured data.
+ */
+export function ActivityComposer({
+  leadId,
+  stageName,
+  fields = [],
+  values = {},
+}: {
+  leadId: string;
+  /** The stage the lead is in, for the heading above its questions. */
+  stageName?: string | null;
+  /** What this stage asks — empty for stages that ask nothing. */
+  fields?: JourneyField[];
+  /** Anything already captured, so the boxes open filled in. */
+  values?: Record<string, string>;
+}) {
   const [state, action, pending] = useActionState(addActivityAction, undefined);
   const [kind, setKind] = useState("note");
   const formRef = useRef<HTMLFormElement>(null);
@@ -34,6 +57,11 @@ export function ActivityComposer({ leadId }: { leadId: string }) {
   return (
     <form ref={formRef} action={action} className="card space-y-2 p-3">
       <input type="hidden" name="leadId" value={leadId} />
+      <input
+        type="hidden"
+        name="fieldKeys"
+        value={fields.map((f) => f.key).join(",")}
+      />
       <div className="flex flex-wrap items-center gap-2">
         <select
           name="kind"
@@ -77,6 +105,19 @@ export function ActivityComposer({ leadId }: { leadId: string }) {
         }
         className="input text-sm"
       />
+      {/* The current stage's questions. Hidden entirely for stages that ask
+          nothing, so the composer stays a composer. */}
+      {fields.length > 0 && (
+        <div className="space-y-3 rounded-lg border border-border bg-panel/40 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+            {stageName ? `${stageName} — record while you're here` : "Record"}
+          </p>
+          {fields.map((f) => (
+            <StageField key={f.key} field={f} value={values[f.key] ?? ""} />
+          ))}
+        </div>
+      )}
+
       {state?.error && <div className="text-[11px] text-danger">{state.error}</div>}
       <div className="flex items-center justify-between gap-2">
         <label
@@ -91,5 +132,39 @@ export function ActivityComposer({ leadId }: { leadId: string }) {
         </button>
       </div>
     </form>
+  );
+}
+
+/** One stage question inside the composer. */
+function StageField({ field, value }: { field: JourneyField; value: string }) {
+  const id = `f_${field.key}`;
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[11px] uppercase tracking-wide text-muted">
+        {field.label}
+      </span>
+      {field.type === "datetime" ? (
+        <DateTimeField name={id} defaultValue={value} />
+      ) : field.type === "text" ? (
+        <textarea name={id} defaultValue={value} rows={2} className="input text-sm" />
+      ) : field.type === "date" ? (
+        <input type="date" name={id} defaultValue={value} className="input text-sm" />
+      ) : field.type === "yesno" ? (
+        <select name={id} defaultValue={value} className="input text-sm">
+          <option value="">—</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      ) : (
+        <select name={id} defaultValue={value} className="input text-sm">
+          <option value="">—</option>
+          {(field.options ?? []).map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+      )}
+    </label>
   );
 }

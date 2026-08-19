@@ -554,6 +554,31 @@ export async function addActivityAction(
     outcome,
     visibility,
   });
+  // The composer carries the current stage's questions, so whatever was filled
+  // in is saved against the journey in the same submit — one action for the
+  // caller, structured data for whoever picks the lead up next.
+  const stageKeys = String(formData.get("fieldKeys") ?? "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+  if (stageKeys.length > 0 && lead.pipelineId) {
+    const values: Record<string, string> = {};
+    for (const k of stageKeys) {
+      const v = String(formData.get(`f_${k}`) ?? "").trim();
+      if (v) values[k] = v;
+    }
+    if (Object.keys(values).length > 0) {
+      await saveJourneyStep({
+        leadId,
+        orgId: user.orgId,
+        pipelineId: lead.pipelineId,
+        values,
+        complete: false,
+        actor: { userId: user.id, name: user.name },
+      });
+    }
+  }
+
   revalidatePath(`/leads/${leadId}`);
   return { ok: true };
 }
