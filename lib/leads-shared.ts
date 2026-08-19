@@ -253,6 +253,20 @@ export function followUpState(
   return "later";
 }
 
+/**
+ * A dialable href for a phone number as it was typed. Keeps a leading + so
+ * international numbers still dial, and strips everything else — imported
+ * numbers arrive with spaces, dashes and brackets in every combination.
+ * Returns null when there aren't enough digits to be a number at all.
+ */
+export function telHref(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const trimmed = phone.trim();
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length < 6) return null;
+  return `tel:${trimmed.startsWith("+") ? "+" : ""}${digits}`;
+}
+
 // Outcomes for a logged call.
 export const CALL_OUTCOMES: string[] = [
   "Connected",

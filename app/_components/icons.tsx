@@ -26,7 +26,8 @@ export type IconName =
   | "arrowUpRight"
   | "upload"
   | "search"
-  | "funnel";
+  | "funnel"
+  | "phone";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   // Three columns — the pipeline board.
@@ -102,6 +103,9 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   funnel: <path d="M4 5h16l-6.2 7.4v5.4l-3.6 1.8v-7.2L4 5Z" />,
+  phone: (
+    <path d="M7.6 4.5h-2A1.6 1.6 0 0 0 4 6.2c0 7.6 6.2 13.8 13.8 13.8a1.6 1.6 0 0 0 1.7-1.6v-2a1.2 1.2 0 0 0-1-1.2l-2.6-.5a1.2 1.2 0 0 0-1.2.5l-.8 1.1a11.6 11.6 0 0 1-5.7-5.7l1.1-.8a1.2 1.2 0 0 0 .5-1.2l-.5-2.6a1.2 1.2 0 0 0-1.2-1Z" />
+  ),
 };
 
 export function Icon({

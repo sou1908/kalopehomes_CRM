@@ -9,7 +9,12 @@ import {
   listLeadTags,
   tagsForLead,
 } from "@/lib/leads";
-import { formatValue, followUpState, parseJourney } from "@/lib/leads-shared";
+import {
+  formatValue,
+  followUpState,
+  parseJourney,
+  telHref,
+} from "@/lib/leads-shared";
 import { listAssignableMembers } from "@/lib/members";
 import {
   listPipelines,
@@ -29,6 +34,7 @@ import { ActivityComposer } from "../_components/activity-composer";
 import { ActivityItem } from "../_components/activity-item";
 import { JourneyStepper } from "../_components/journey-stepper";
 import { JourneyRibbon } from "../_components/journey-ribbon";
+import { Icon } from "@/app/_components/icons";
 import { UndoTransfer } from "../_components/undo-transfer";
 import { RailTabs } from "../_components/rail-tabs";
 import { deleteLeadAction, setFollowUpAction } from "../actions";
@@ -165,6 +171,17 @@ export default async function LeadDetailPage({
             <h1 className="mt-1 font-display text-2xl font-medium leading-tight tracking-tight sm:text-[2rem]">
               {lead.name}
             </h1>
+            {telHref(lead.phone) && (
+              <a
+                href={telHref(lead.phone)!}
+                title={`Call ${lead.name}`}
+                className="mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 font-mono text-sm text-accentInk transition-colors hover:border-accent/50 hover:bg-elevated"
+              >
+                <Icon name="phone" size={13} />
+                {lead.phone}
+              </a>
+            )}
+
             <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted">
               <span>{lead.company || "No company"}</span>
               {formatValue(lead.estimatedValue) && (

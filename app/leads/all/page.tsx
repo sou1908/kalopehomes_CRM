@@ -10,7 +10,7 @@ import {
 import { listAssignableMembers } from "@/lib/members";
 import { listPipelines, canWorkPipeline } from "@/lib/pipelines";
 import { assigneesForLeads } from "@/lib/assignees";
-import { formatValue, followUpState } from "@/lib/leads-shared";
+import { formatValue, followUpState, telHref } from "@/lib/leads-shared";
 import { initials, colorFromName } from "@/lib/avatar";
 import { StageMenu } from "../_components/stage-menu";
 import { ColumnFilter } from "./_components/column-filter";
@@ -425,7 +425,26 @@ export default async function AllLeadsPage({
                         )}
                       </td>
                       <td className="hidden px-4 py-3 text-muted md:table-cell">
-                        {lead.email || lead.phone || "—"}
+                        {/* Dialable: a telecaller works this column all day, and
+                            copying a number out to a phone is the slow part. */}
+                        {telHref(lead.phone) ? (
+                          <a
+                            href={telHref(lead.phone)!}
+                            className="font-mono text-accentInk transition-colors hover:underline"
+                            title={`Call ${lead.name}`}
+                          >
+                            {lead.phone}
+                          </a>
+                        ) : lead.email ? (
+                          <a
+                            href={`mailto:${lead.email}`}
+                            className="transition-colors hover:text-text hover:underline"
+                          >
+                            {lead.email}
+                          </a>
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td className="hidden px-4 py-3 lg:table-cell">
                         {(() => {
