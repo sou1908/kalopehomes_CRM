@@ -37,6 +37,7 @@ import { JourneyStepper } from "../_components/journey-stepper";
 import { JourneyRibbon } from "../_components/journey-ribbon";
 import { Icon } from "@/app/_components/icons";
 import { UndoTransfer } from "../_components/undo-transfer";
+import { FollowUpPicker } from "../_components/follow-up-picker";
 import { RailTabs } from "../_components/rail-tabs";
 import { deleteLeadAction, setFollowUpAction } from "../actions";
 
@@ -443,20 +444,12 @@ export default async function LeadDetailPage({
                     <form action={setFollowUpAction} className="card space-y-3 p-4">
                       <input type="hidden" name="leadId" value={lead.id} />
                       <div>
-                        <label className="label" htmlFor="lead-followup">
-                          Remind me on
-                        </label>
-                        <input
-                          id="lead-followup"
-                          name="followUpAt"
-                          type="datetime-local"
-                          defaultValue={toDateInput(lead.followUpAt)}
-                          className="input text-sm"
-                        />
+                        <span className="label">Remind me on</span>
+                        <FollowUpPicker defaultValue={toDateInput(lead.followUpAt)} />
                         <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
-                          Leave the time blank for a whole-day reminder. Overdue
-                          &amp; due-soon leads surface in “Needs attention”; clear
-                          the field to remove it.
+                          Leave the time on “All day” for a whole-day reminder.
+                          Overdue &amp; due-soon leads surface in “Needs
+                          attention”; clear the date to remove it.
                         </p>
                       </div>
                       <button type="submit" className="btn-primary w-full text-xs">

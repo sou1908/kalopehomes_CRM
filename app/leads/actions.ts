@@ -64,6 +64,20 @@ function parseValue(raw: FormDataEntryValue | null): number | null {
 function parseDate(raw: FormDataEntryValue | null): Date | null {
   const s = String(raw ?? "").trim();
   if (!s) return null;
+
+  // A bare yyyy-mm-dd is parsed as UTC midnight by the Date constructor, which
+  // in IST lands at 05:30 the same morning — so an all-day reminder would come
+  // back as "5:30 am". Build it as local midnight instead, which is what the
+  // rest of the app treats as "no time given".
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (dateOnly) {
+    return new Date(
+      Number(dateOnly[1]),
+      Number(dateOnly[2]) - 1,
+      Number(dateOnly[3]),
+    );
+  }
+
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
 }
