@@ -11,7 +11,7 @@ import {
 } from "@/lib/leads";
 import { formatValue, followUpState, parseJourney } from "@/lib/leads-shared";
 import { listAssignableMembers } from "@/lib/members";
-import { listPipelines } from "@/lib/pipelines";
+import { listPipelines, canWorkPipeline } from "@/lib/pipelines";
 import { listLeadAssignees } from "@/lib/assignees";
 import { initials, colorFromName } from "@/lib/avatar";
 import { StageMenu } from "../_components/stage-menu";
@@ -70,16 +70,26 @@ export default async function LeadDetailPage({
 
   const stageColor = currentStage?.color ?? "#6a89a8";
   const isAdmin = user.roles.includes("admin");
-  const journey = parseJourney(lead.journey);
+  // Role scoping: you work your own pipeline's step. Answers captured in other
+  // pipelines are stripped here rather than hidden in the component, so they
+  // never reach the browser at all.
+  const workable = pipelines.filter((p) => canWorkPipeline(p, user.roles));
+  const workableIds = workable.map((p) => p.id);
+  const fullJourney = parseJourney(lead.journey);
+  const journey = Object.fromEntries(
+    Object.entries(fullJourney).filter(([pipelineId]) =>
+      workableIds.includes(pipelineId),
+    ),
+  );
   // Completed milestones, oldest → newest, for the journey timeline.
   const journeySteps = pipelines
-    .filter((d) => journey[d.id]?.done)
+    .filter((d) => fullJourney[d.id]?.done)
     .map((d) => ({
       id: d.id,
       name: d.name,
       color: d.color,
-      by: journey[d.id]!.by,
-      at: journey[d.id]!.at,
+      by: fullJourney[d.id]!.by,
+      at: fullJourney[d.id]!.at,
     }))
     .sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
 
@@ -187,6 +197,7 @@ export default async function LeadDetailPage({
               pipelines={pipelines}
               currentPipelineId={lead.pipelineId}
               journey={journey}
+              workablePipelineIds={workableIds}
             />
           </div>
 

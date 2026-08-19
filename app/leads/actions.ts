@@ -39,6 +39,7 @@ import {
   AssigneeError,
 } from "@/lib/assignees";
 import { transferLead, escalateToManager, TransferError } from "@/lib/transfer";
+import { getPipeline, canWorkPipeline } from "@/lib/pipelines";
 import { saveJourneyStep } from "@/lib/journey";
 import { CALL_OUTCOMES } from "@/lib/leads-shared";
 
@@ -240,6 +241,13 @@ export async function saveJourneyStepAction(formData: FormData) {
   if (!user.orgId) return;
   const leadId = String(formData.get("leadId") ?? "");
   const pipelineId = String(formData.get("pipelineId") ?? "");
+
+  // Each role works its own pipeline. Checked here rather than only in the UI:
+  // the pipeline id arrives in the form body, so hiding the form isn't a
+  // control — a telecaller could otherwise complete the site agent's step.
+  const pipeline = pipelineId ? await getPipeline(pipelineId, user.orgId) : null;
+  if (!pipeline) return;
+  if (!canWorkPipeline(pipeline, user.roles)) return;
   const complete = String(formData.get("intent") ?? "") === "complete";
   const keys = String(formData.get("fieldKeys") ?? "")
     .split(",")

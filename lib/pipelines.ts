@@ -27,6 +27,15 @@ function hydrate(row: Pipeline): PipelineRow {
   };
 }
 
+/** True when these roles may work this pipeline. Admins may work all of them. */
+export function canWorkPipeline(
+  pipeline: { roles: string[] },
+  roles: string[],
+): boolean {
+  if (roles.includes("admin")) return true;
+  return pipeline.roles.some((r) => roles.includes(r));
+}
+
 /** Pipelines this user may work. Admins get all of them. */
 export function pipelinesForRoles(
   all: PipelineRow[],
@@ -59,7 +68,7 @@ export async function listPipelines(orgId: string): Promise<PipelineRow[]> {
   return rows.map(hydrate);
 }
 
-async function getPipeline(id: string, orgId: string): Promise<PipelineRow | null> {
+export async function getPipeline(id: string, orgId: string): Promise<PipelineRow | null> {
   const rows = await db
     .select()
     .from(pipelines)

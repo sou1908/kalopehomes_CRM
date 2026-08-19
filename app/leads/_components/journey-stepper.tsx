@@ -8,16 +8,29 @@ import {
 } from "@/lib/leads-shared";
 import { PipelineStepForm } from "./pipeline-step-form";
 
+/**
+ * The lead's run through the pipelines.
+ *
+ * Each role works only its own step: you get the form for your pipeline, and
+ * every other pipeline shows as a status line — done or pending, by whom and
+ * when — without its captured answers. Those are filtered out server-side, so
+ * they aren't in the page at all rather than merely hidden.
+ *
+ * Admins see and can edit everything.
+ */
 export function JourneyStepper({
   leadId,
   pipelines,
   currentPipelineId,
   journey,
+  workablePipelineIds,
 }: {
   leadId: string;
   pipelines: PipelineInfo[];
   currentPipelineId: string | null;
   journey: JourneyData;
+  /** Pipelines this viewer's roles let them work. */
+  workablePipelineIds: string[];
 }) {
   if (pipelines.length === 0) {
     return <p className="py-6 text-center text-xs text-muted">No pipelines configured.</p>;
@@ -29,6 +42,7 @@ export function JourneyStepper({
         const step = journey[pipeline.id];
         const done = step?.done ?? false;
         const isCurrent = pipeline.id === currentPipelineId;
+        const mine = workablePipelineIds.includes(pipeline.id);
         const fields = journeyFormFor(pipeline.name);
 
         return (
@@ -74,8 +88,9 @@ export function JourneyStepper({
               )}
             </div>
 
-            {/* The form only shows on the pipeline the lead is currently on. */}
-            {isCurrent ? (
+            {/* The form shows only on the pipeline the lead is on, and only to
+                someone whose role works it. */}
+            {isCurrent && mine ? (
               <div className="mt-2">
                 <PipelineStepForm
                   leadId={leadId}
@@ -84,8 +99,12 @@ export function JourneyStepper({
                   step={step}
                 />
               </div>
-            ) : done ? (
+            ) : done && mine ? (
               <Summary fields={fields} values={step?.fields ?? {}} />
+            ) : isCurrent && !mine ? (
+              <p className="mt-1.5 text-[11px] text-muted">
+                Being worked by the {pipeline.name} team.
+              </p>
             ) : null}
           </li>
         );
