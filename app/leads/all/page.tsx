@@ -148,6 +148,10 @@ export default async function AllLeadsPage({
           </h1>
         </div>
         <div className="flex items-center gap-2">
+          {/* ⚠️ TEMPORARY — testing only. Remove this, the import above,
+              app/leads/_components/danger-zone.tsx, deleteAllLeadsAction in
+              app/leads/actions.ts, and lib/danger.ts before launch. */}
+          {user.roles.includes("admin") && <DangerZone count={everyLead.length} />}
           <Link
             href="/leads"
             className="rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:text-text"
@@ -601,11 +605,6 @@ export default async function AllLeadsPage({
         </div>
         </>
       )}
-
-      {/* ⚠️ TEMPORARY — testing only. Remove this block, the import above,
-          app/leads/_components/danger-zone.tsx, deleteAllLeadsAction in
-          app/leads/actions.ts, and lib/danger.ts before launch. */}
-      {user.roles.includes("admin") && <DangerZone count={everyLead.length} />}
     </div>
   );
 }
