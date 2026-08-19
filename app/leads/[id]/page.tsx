@@ -168,21 +168,24 @@ export default async function LeadDetailPage({
                 {currentStage?.name ?? "—"}
               </span>
             </div>
-            <h1 className="mt-1 font-display text-2xl font-medium leading-tight tracking-tight sm:text-[2rem]">
-              {lead.name}
-            </h1>
-            {telHref(lead.phone) && (
-              // Icon only — the number itself is a click away under View
-              // details, and the header is for acting, not for reading it back.
-              <a
-                href={telHref(lead.phone)!}
-                title={`Call ${lead.name} — ${lead.phone}`}
-                aria-label={`Call ${lead.name} on ${lead.phone}`}
-                className="mt-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-accentInk transition-colors hover:border-accent/50 hover:bg-elevated"
-              >
-                <Icon name="phone" size={15} />
-              </a>
-            )}
+            <div className="mt-1 flex items-center gap-3">
+              <h1 className="font-display text-2xl font-medium leading-tight tracking-tight sm:text-[2rem]">
+                {lead.name}
+              </h1>
+              {telHref(lead.phone) && (
+                // Icon only, and sat beside the name: calling this person is
+                // the page's main action, and the number itself is a click away
+                // under View details.
+                <a
+                  href={telHref(lead.phone)!}
+                  title={`Call ${lead.name} — ${lead.phone}`}
+                  aria-label={`Call ${lead.name} on ${lead.phone}`}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border text-accentInk transition-colors hover:border-accent/50 hover:bg-elevated"
+                >
+                  <Icon name="phone" size={15} />
+                </a>
+              )}
+            </div>
 
             <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted">
               <span>{lead.company || "No company"}</span>
