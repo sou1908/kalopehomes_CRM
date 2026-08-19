@@ -195,15 +195,15 @@ export async function listLeadMentions(orgId: string): Promise<LeadMention[]> {
   }));
 }
 
-/** Leads currently sitting on a given handling desk (the desk's worklist). */
+/** Leads currently sitting on a given handling pipeline (the pipeline's worklist). */
 export async function listLeadsByDesk(
   orgId: string,
-  deskId: string,
+  pipelineId: string,
 ): Promise<Lead[]> {
   return db
     .select()
     .from(leads)
-    .where(and(eq(leads.orgId, orgId), eq(leads.deskId, deskId)))
+    .where(and(eq(leads.orgId, orgId), eq(leads.pipelineId, pipelineId)))
     .orderBy(desc(leads.updatedAt));
 }
 

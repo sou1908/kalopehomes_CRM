@@ -7,19 +7,19 @@ import {
 } from "@/lib/leads-shared";
 import { saveJourneyStepAction } from "../actions";
 
-/** The journey form for ONE desk on ONE lead — fill fields, Save or Mark done. */
-export function DeskStepForm({
+/** The journey form for ONE pipeline on ONE lead — fill fields, Save or Mark done. */
+export function PipelineStepForm({
   leadId,
-  deskId,
-  deskName,
+  pipelineId,
+  pipelineName,
   step,
 }: {
   leadId: string;
-  deskId: string;
-  deskName: string;
+  pipelineId: string;
+  pipelineName: string;
   step?: JourneyStep;
 }) {
-  const fields = journeyFormFor(deskName);
+  const fields = journeyFormFor(pipelineName);
   const done = step?.done ?? false;
   return (
     <form
@@ -27,7 +27,7 @@ export function DeskStepForm({
       className="space-y-2 rounded-lg border border-border bg-panel/40 p-3"
     >
       <input type="hidden" name="leadId" value={leadId} />
-      <input type="hidden" name="deskId" value={deskId} />
+      <input type="hidden" name="pipelineId" value={pipelineId} />
       <input type="hidden" name="fieldKeys" value={fields.map((f) => f.key).join(",")} />
       {fields.map((f) => (
         <Field key={f.key} field={f} value={step?.fields?.[f.key] ?? ""} />

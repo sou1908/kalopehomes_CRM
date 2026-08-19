@@ -4,7 +4,7 @@ import { db } from "./db";
 import { leads } from "./db/schema";
 import { parseCsv, normalizeHeader } from "./csv";
 import { createLead, listLeadStages, type LeadActor } from "./leads";
-import { firstDeskId, setLeadDesk } from "./desks";
+import { firstPipelineId, setLeadPipeline } from "./pipelines";
 
 /**
  * CSV → leads. Built for marketing dumps (Facebook lead ads, spreadsheets from
@@ -372,7 +372,7 @@ export async function commitLeadImport(
   options: { skipDuplicates: boolean },
 ): Promise<ImportResult> {
   const preview = await previewLeadImport(csvText, orgId);
-  const deskId = await firstDeskId(orgId);
+  const pipelineId = await firstPipelineId(orgId);
 
   const result: ImportResult = {
     created: 0,
@@ -413,10 +413,10 @@ export async function commitLeadImport(
           notes: row.notes,
         },
       });
-      // Imported leads are here to be worked, so put them on the first desk
-      // (Telecalling) rather than leaving them with no desk at all.
-      if (deskId) {
-        await setLeadDesk(id, orgId, deskId, actor, { silent: true }).catch(() => {});
+      // Imported leads are here to be worked, so put them on the first pipeline
+      // (Telecalling) rather than leaving them with no pipeline at all.
+      if (pipelineId) {
+        await setLeadPipeline(id, orgId, pipelineId, actor, { silent: true }).catch(() => {});
       }
       result.created++;
     } catch (err) {

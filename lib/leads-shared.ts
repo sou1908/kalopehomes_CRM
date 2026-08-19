@@ -18,11 +18,8 @@ export type LeadStageInfo = {
 /** Client-safe view of a CRM tag row. */
 export type LeadTagInfo = { id: string; name: string; color: string };
 
-/** Client-safe view of a handling desk (Telecalling → Site Visit → Manager). */
-export type DeskInfo = { id: string; name: string; color: string; position: number };
-
 // ── [PROTOTYPE] Lead journey / milestones ───────────────────────────────────
-// Each desk has a small form the handler fills, then marks the step done.
+// Each pipeline has a small form the handler fills, then marks the step done.
 export type JourneyFieldType = "text" | "yesno" | "date" | "select";
 export type JourneyField = {
   key: string;
@@ -31,7 +28,7 @@ export type JourneyField = {
   options?: string[];
 };
 
-// Default fields per desk, matched by desk name (lower-cased). Unknown desks
+// Default fields per pipeline, matched by pipeline name (lower-cased). Unknown pipelines
 // fall back to a single Notes field. Make these configurable later if kept.
 export const JOURNEY_FORMS: Record<string, JourneyField[]> = {
   telecalling: [
@@ -56,8 +53,8 @@ export const DEFAULT_JOURNEY_FORM: JourneyField[] = [
   { key: "notes", label: "Notes", type: "text" },
 ];
 
-export function journeyFormFor(deskName: string): JourneyField[] {
-  return JOURNEY_FORMS[deskName.trim().toLowerCase()] ?? DEFAULT_JOURNEY_FORM;
+export function journeyFormFor(pipelineName: string): JourneyField[] {
+  return JOURNEY_FORMS[pipelineName.trim().toLowerCase()] ?? DEFAULT_JOURNEY_FORM;
 }
 
 export type JourneyStep = {
@@ -78,12 +75,118 @@ export function parseJourney(raw: string | null | undefined): JourneyData {
 }
 
 // Seeded once per org in bootstrap. Spaced positions leave room to insert custom
-// desks (e.g. Closing/Sales) between the defaults without renumbering.
-export const DEFAULT_DESKS: Array<{ name: string; color: string; position: number }> = [
-  { name: "Telecalling", color: "#6a89a8", position: 10 },
-  { name: "Site Visit", color: "#d99756", position: 20 },
-  { name: "Manager", color: "#7c9e6d", position: 30 },
+// pipelines (e.g. Closing/Sales) between the defaults without renumbering.
+/**
+ * The pipelines seeded for a new org, in the order a lead travels them. Each
+ * belongs to one role and carries its own stages, so "Won" reads correctly in
+ * every one: for the telecaller it means the lead was successfully handed to a
+ * site agent, not that a sale closed.
+ *
+ * All of it is editable per org — these are only the starting point.
+ */
+export type PipelineStageSeed = {
+  name: string;
+  color: string;
+  kind: LeadStageKind;
+  position: number;
+  probability: number;
+  /** Reaching this stage completes the pipeline and hands the lead on. */
+  isExit?: boolean;
+};
+
+export const DEFAULT_PIPELINES: Array<{
+  name: string;
+  color: string;
+  position: number;
+  roles: string[];
+  stages: PipelineStageSeed[];
+}> = [
+  {
+    // Raw ad/local data lands here and gets called through one by one.
+    name: "Telecalling",
+    color: "#6a89a8",
+    position: 10,
+    roles: ["telecaller"],
+    stages: [
+      { name: "New", color: "#6a89a8", kind: "open", position: 10, probability: 10 },
+      { name: "Not reachable", color: "#8c8170", kind: "open", position: 20, probability: 5 },
+      { name: "Interested", color: "#f97316", kind: "open", position: 30, probability: 50 },
+      { name: "Not interested", color: "#ef4444", kind: "lost", position: 90, probability: 0 },
+      {
+        name: "Handed over",
+        color: "#10b981",
+        kind: "won",
+        position: 100,
+        probability: 100,
+        isExit: true,
+      },
+    ],
+  },
+  {
+    name: "Site Visit",
+    color: "#d99756",
+    position: 20,
+    roles: ["site_agent"],
+    stages: [
+      { name: "Visit scheduled", color: "#d99756", kind: "open", position: 10, probability: 55 },
+      { name: "Visited", color: "#f97316", kind: "open", position: 20, probability: 70 },
+      { name: "Revisit needed", color: "#8c8170", kind: "open", position: 30, probability: 40 },
+      { name: "Visit cancelled", color: "#ef4444", kind: "lost", position: 90, probability: 0 },
+      {
+        name: "Sent to operations",
+        color: "#10b981",
+        kind: "won",
+        position: 100,
+        probability: 100,
+        isExit: true,
+      },
+    ],
+  },
+  {
+    // Placeholder — the operations flow is still to be defined, so these three
+    // are the minimum that keeps the board usable until it is.
+    name: "Operations",
+    color: "#7c9e6d",
+    position: 30,
+    roles: ["operation_manager"],
+    stages: [
+      { name: "In discussion", color: "#6a89a8", kind: "open", position: 10, probability: 70 },
+      { name: "Lost", color: "#ef4444", kind: "lost", position: 90, probability: 0 },
+      { name: "Won", color: "#10b981", kind: "won", position: 100, probability: 100 },
+    ],
+  },
 ];
+
+/** Client-safe view of a pipeline. */
+export type PipelineInfo = {
+  id: string;
+  name: string;
+  color: string;
+  position: number;
+  roles: string[];
+};
+
+/** Parses the `roles` JSON column, tolerating anything malformed. */
+/** Parses a pipeline's `fields` JSON column into its step-form definition. */
+export function parseJourneyFields(raw: string | null | undefined): JourneyField[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? (v as JourneyField[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function parsePipelineRoles(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 /** Compact lead shape for @mention pickers + chat chips. `open` = in an open stage. */
 export type LeadMention = {

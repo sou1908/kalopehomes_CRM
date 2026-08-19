@@ -2,24 +2,24 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { DeskInfo } from "@/lib/leads-shared";
+import type { PipelineInfo } from "@/lib/leads-shared";
 import { transferLeadAction, escalateLeadAction } from "../actions";
 
 type Member = { id: string; name: string };
 
 /**
- * Step a lead to the next desk and hand it to a person there, or escalate
- * straight to the Manager desk.
+ * Step a lead to the next pipeline and hand it to a person there, or escalate
+ * straight to the Manager pipeline.
  */
 export function TransferPanel({
   leadId,
-  currentDeskId,
-  desks,
+  currentPipelineId,
+  pipelines,
   members,
 }: {
   leadId: string;
-  currentDeskId: string | null;
-  desks: DeskInfo[];
+  currentPipelineId: string | null;
+  pipelines: PipelineInfo[];
   members: Member[];
 }) {
   const [state, action, pending] = useActionState(transferLeadAction, undefined);
@@ -33,18 +33,18 @@ export function TransferPanel({
     }
   }, [state, router]);
 
-  // Default the desk select to the next desk after the current one.
-  const idx = desks.findIndex((d) => d.id === currentDeskId);
-  const nextDesk = desks[idx + 1] ?? desks[idx] ?? desks[0];
+  // Default the pipeline select to the next pipeline after the current one.
+  const idx = pipelines.findIndex((d) => d.id === currentPipelineId);
+  const nextPipeline = pipelines[idx + 1] ?? pipelines[idx] ?? pipelines[0];
 
   return (
     <div className="space-y-3">
       <form action={action} className="space-y-2">
         <input type="hidden" name="leadId" value={leadId} />
         <div>
-          <label className="label">To desk</label>
-          <select name="deskId" defaultValue={nextDesk?.id ?? ""} className="input text-sm">
-            {desks.map((d) => (
+          <label className="label">To pipeline</label>
+          <select name="pipelineId" defaultValue={nextPipeline?.id ?? ""} className="input text-sm">
+            {pipelines.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
               </option>
@@ -75,7 +75,7 @@ export function TransferPanel({
         <button
           type="submit"
           className="w-full rounded-md border border-border px-2.5 py-1.5 text-xs text-muted hover:border-accent/50 hover:text-text"
-          title="Move to the Manager desk and notify the Lead Manager"
+          title="Move to the Manager pipeline and notify the Lead Manager"
         >
           ⤴ Escalate to Lead Manager
         </button>

@@ -11,7 +11,7 @@ import {
 } from "@/lib/leads";
 import { formatValue, followUpState, parseJourney } from "@/lib/leads-shared";
 import { listAssignableMembers } from "@/lib/members";
-import { listDesks } from "@/lib/desks";
+import { listPipelines } from "@/lib/pipelines";
 import { listLeadAssignees } from "@/lib/assignees";
 import { initials, colorFromName } from "@/lib/avatar";
 import { StageMenu } from "../_components/stage-menu";
@@ -46,12 +46,12 @@ export default async function LeadDetailPage({
   const { id } = await params;
   const orgId = user.orgId ?? "";
 
-  const [lead, stages, allTags, members, desks] = await Promise.all([
+  const [lead, stages, allTags, members, pipelines] = await Promise.all([
     getLead(id, orgId),
     listLeadStages(orgId),
     listLeadTags(orgId),
     listAssignableMembers(orgId),
-    listDesks(orgId),
+    listPipelines(orgId),
   ]);
   if (!lead) notFound();
   const currentStage = stages.find((s) => s.id === lead.stageId) ?? null;
@@ -68,7 +68,7 @@ export default async function LeadDetailPage({
   const isAdmin = user.roles.includes("admin");
   const journey = parseJourney(lead.journey);
   // Completed milestones, oldest → newest, for the journey timeline.
-  const journeySteps = desks
+  const journeySteps = pipelines
     .filter((d) => journey[d.id]?.done)
     .map((d) => ({
       id: d.id,
@@ -189,8 +189,8 @@ export default async function LeadDetailPage({
                       <div className="card p-4">
                         <JourneyStepper
                           leadId={lead.id}
-                          desks={desks}
-                          currentDeskId={lead.deskId}
+                          pipelines={pipelines}
+                          currentPipelineId={lead.pipelineId}
                           journey={journey}
                         />
                       </div>
@@ -286,8 +286,8 @@ export default async function LeadDetailPage({
                   content: (
                     <TransferPanel
                       leadId={lead.id}
-                      currentDeskId={lead.deskId}
-                      desks={desks}
+                      currentPipelineId={lead.pipelineId}
+                      pipelines={pipelines}
                       members={members}
                     />
                   ),

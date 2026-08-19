@@ -14,7 +14,7 @@ const META: Record<string, { icon: string; verb: string }> = {
   created: { icon: "✨", verb: "created the lead" },
   converted: { icon: "✅", verb: "converted the lead" },
   assigned: { icon: "👤", verb: "updated assignment" },
-  desk_change: { icon: "🪑", verb: "moved desk" },
+  pipeline_change: { icon: "🪑", verb: "moved pipeline" },
   transferred: { icon: "➡️", verb: "transferred the lead" },
 };
 

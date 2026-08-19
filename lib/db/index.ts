@@ -14,6 +14,59 @@ const sqlite = new Database(dbPath);
 sqlite.pragma("journal_mode = WAL");
 sqlite.pragma("foreign_keys = ON");
 
+// ── Pre-DDL migration: desks → pipelines ───────────────────────────────────
+// MUST run before the CREATE TABLE block below. If an empty `pipelines` table
+// were created first, the rename would be skipped and every lead would lose
+// which desk it was on. Guarded on both sides, so re-running is a no-op.
+try {
+  const tableNames = () =>
+    (
+      sqlite
+        .prepare(`SELECT name FROM sqlite_master WHERE type='table'`)
+        .all() as Array<{ name: string }>
+    ).map((t) => t.name);
+  const leadColumns = () =>
+    (sqlite.prepare(`PRAGMA table_info(leads)`).all() as Array<{ name: string }>).map(
+      (c) => c.name,
+    );
+
+  let tables = tableNames();
+  if (tables.includes("desks") && !tables.includes("pipelines")) {
+    sqlite.exec(`ALTER TABLE desks RENAME TO pipelines;`);
+    console.log("[migrate] desks → pipelines");
+  }
+
+  let cols = leadColumns();
+  if (cols.includes("desk_id") && !cols.includes("pipeline_id")) {
+    sqlite.exec(`ALTER TABLE leads RENAME COLUMN desk_id TO pipeline_id;`);
+    console.log("[migrate] leads.desk_id → leads.pipeline_id");
+  }
+
+  // Clean up after a run that hit the old ordering bug: an empty `desks` table
+  // and/or a stale `desk_id` column left beside the real ones. Only ever drops
+  // the leftovers once `pipelines` is genuinely in place.
+  tables = tableNames();
+  cols = leadColumns();
+  if (tables.includes("desks") && tables.includes("pipelines")) {
+    const kept = (
+      sqlite.prepare(`SELECT COUNT(*) AS c FROM pipelines`).get() as { c: number }
+    ).c;
+    if (kept > 0) {
+      sqlite.exec(`DROP TABLE desks;`);
+      console.log("[migrate] dropped leftover desks table");
+    }
+  }
+  if (cols.includes("desk_id") && cols.includes("pipeline_id")) {
+    // The old index references the column, and SQLite refuses to drop a column
+    // an index still names. Drop the index first.
+    sqlite.exec(`DROP INDEX IF EXISTS idx_leads_desk;`);
+    sqlite.exec(`ALTER TABLE leads DROP COLUMN desk_id;`);
+    console.log("[migrate] dropped leftover leads.desk_id");
+  }
+} catch (err) {
+  console.error("[migrate] desks → pipelines failed:", err);
+}
+
 // Auto-migrate: create tables if they don't exist. Idempotent.
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS organizations (
@@ -102,15 +155,17 @@ sqlite.exec(`
   CREATE INDEX IF NOT EXISTS idx_leads_org ON leads(org_id);
   CREATE INDEX IF NOT EXISTS idx_leads_stage ON leads(stage);
 
-  CREATE TABLE IF NOT EXISTS desks (
+  CREATE TABLE IF NOT EXISTS pipelines (
     id TEXT PRIMARY KEY,
     org_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     color TEXT NOT NULL DEFAULT '#6a89a8',
     position INTEGER NOT NULL DEFAULT 0,
+    roles TEXT NOT NULL DEFAULT '[]',
+    fields TEXT NOT NULL DEFAULT '[]',
     created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
   );
-  CREATE INDEX IF NOT EXISTS idx_desks_org ON desks(org_id);
+  CREATE INDEX IF NOT EXISTS idx_pipelines_org ON pipelines(org_id);
 
   CREATE TABLE IF NOT EXISTS lead_stages (
     id TEXT PRIMARY KEY,
@@ -177,9 +232,10 @@ const addColumns: Array<[string, string]> = [
   ["chat_messages", "recipient_user_id TEXT REFERENCES users(id) ON DELETE CASCADE"],
   // Lead ownership: the staff member a lead is assigned to.
   ["leads", "owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL"],
-  // Handling desk (Telecalling → Site Visit → Manager).
-  ["leads", "desk_id TEXT REFERENCES desks(id) ON DELETE SET NULL"],
-  // [PROTOTYPE] Per-desk journey/milestone data (JSON).
+  // The pipeline a lead is currently worked in (was desk_id before the
+  // 2026-08-19 redesign; the rename migration below handles existing rows).
+  ["leads", "pipeline_id TEXT REFERENCES pipelines(id) ON DELETE SET NULL"],
+  // [PROTOTYPE] Per-pipeline journey/milestone data (JSON).
   ["leads", "journey TEXT NOT NULL DEFAULT '{}'"],
   // User-definable lead pipeline stages: leads point at a lead_stages row.
   ["leads", "stage_id TEXT REFERENCES lead_stages(id)"],
@@ -213,7 +269,7 @@ try {
   sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_leads_owner ON leads(owner_user_id);`);
 } catch {}
 try {
-  sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_leads_desk ON leads(desk_id);`);
+  sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_leads_pipeline ON leads(pipeline_id);`);
 } catch {}
 try {
   sqlite.exec(
@@ -293,6 +349,119 @@ try {
       .run(`admin-${first.id}`.slice(0, 21), first.id);
   }
 } catch {}
+
+// ── Pipeline redesign, part 2 ──────────────────────────────────────────────
+// (The desks → pipelines rename itself runs before the DDL, near the top of
+// this file — it has to, or CREATE TABLE IF NOT EXISTS would create an empty
+// `pipelines` first and the rename would be skipped, stranding every lead's
+// desk assignment.)
+
+// 3. New columns. Each ALTER is separate: SQLite has no "ADD COLUMN IF NOT
+//    EXISTS", so a re-run throws on the ones already applied and the try/catch
+//    per statement lets the rest still land.
+for (const stmt of [
+  `ALTER TABLE pipelines ADD COLUMN roles TEXT NOT NULL DEFAULT '[]'`,
+  `ALTER TABLE pipelines ADD COLUMN fields TEXT NOT NULL DEFAULT '[]'`,
+  `ALTER TABLE lead_stages ADD COLUMN pipeline_id TEXT REFERENCES pipelines(id) ON DELETE CASCADE`,
+  `ALTER TABLE lead_stages ADD COLUMN is_exit INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE lead_stages ADD COLUMN probability INTEGER`,
+]) {
+  try {
+    sqlite.exec(stmt);
+  } catch {}
+}
+
+try {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS lead_pipeline_history (
+      id TEXT PRIMARY KEY,
+      org_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      lead_id TEXT NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+      pipeline_id TEXT REFERENCES pipelines(id) ON DELETE CASCADE,
+      stage_id TEXT REFERENCES lead_stages(id) ON DELETE SET NULL,
+      by_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      completed_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+    );
+    CREATE INDEX IF NOT EXISTS idx_lph_lead ON lead_pipeline_history(lead_id);
+    CREATE INDEX IF NOT EXISTS idx_lph_pipeline ON lead_pipeline_history(pipeline_id);
+    CREATE INDEX IF NOT EXISTS idx_lead_stages_pipeline ON lead_stages(pipeline_id);
+  `);
+} catch (err) {
+  console.error("[migrate] lead_pipeline_history failed:", err);
+}
+
+// 4. Attach existing org-wide stages to the FIRST pipeline. Before this change
+//    stages were shared by everyone, and the first pipeline (Telecalling) is
+//    where every lead already sat.
+try {
+  sqlite.exec(`
+    UPDATE lead_stages
+       SET pipeline_id = (
+         SELECT p.id FROM pipelines p
+          WHERE p.org_id = lead_stages.org_id
+          ORDER BY p.position ASC LIMIT 1
+       )
+     WHERE pipeline_id IS NULL;
+  `);
+} catch (err) {
+  console.error("[migrate] stage→pipeline backfill failed:", err);
+}
+
+// 5. One-time remap of the old shared sales stages onto the telecaller's own
+//    vocabulary. The old set (New/Contacted/Qualified/Won/Lost) was one funnel
+//    for everybody; the telecaller's pipeline now describes calling work, where
+//    "Handed over" is the win. Renaming in place keeps every lead attached to
+//    the row it already pointed at — no lead moves stage.
+//
+//    Scoped to the FIRST pipeline on purpose: Operations seeds its own stages
+//    called Lost and Won, and an unscoped rename would rewrite those too on the
+//    next boot. Idempotent — after it runs, none of the old names match there.
+try {
+  // "the first pipeline in this stage's org" — the one every lead already sat in.
+  const inFirst =
+    "pipeline_id = (SELECT p.id FROM pipelines p WHERE p.org_id = lead_stages.org_id ORDER BY p.position ASC LIMIT 1)";
+  sqlite.exec(`
+    UPDATE lead_stages SET position = 10 WHERE name = 'New' AND ${inFirst};
+    UPDATE lead_stages SET name = 'Not reachable',  position = 20  WHERE name = 'Qualified'  AND ${inFirst};
+    UPDATE lead_stages SET name = 'Interested',     position = 30  WHERE name = 'Contacted'  AND ${inFirst};
+    UPDATE lead_stages SET name = 'Not interested', kind = 'lost', position = 90
+      WHERE name = 'Lost' AND kind = 'lost' AND ${inFirst};
+    UPDATE lead_stages SET name = 'Handed over', kind = 'won', position = 100, is_exit = 1
+      WHERE name = 'Won' AND kind = 'won' AND ${inFirst};
+
+    UPDATE pipelines SET name = 'Operations' WHERE name = 'Manager';
+
+    UPDATE pipelines SET roles = '["telecaller"]'        WHERE name = 'Telecalling' AND roles = '[]';
+    UPDATE pipelines SET roles = '["site_agent"]'        WHERE name = 'Site Visit'  AND roles = '[]';
+    UPDATE pipelines SET roles = '["operation_manager"]' WHERE name = 'Operations'  AND roles = '[]';
+  `);
+} catch (err) {
+  console.error("[migrate] stage remap failed:", err);
+}
+
+// 6. Remove duplicate stages within a pipeline, keeping the row that leads
+//    actually point at (then the oldest). Bootstrap seeds stages per pipeline,
+//    and two concurrent first requests could each decide a pipeline was empty
+//    and seed it — this makes that self-healing rather than permanent.
+try {
+  sqlite.exec(`
+    DELETE FROM lead_stages
+     WHERE id NOT IN (
+       SELECT keep_id FROM (
+         SELECT s.id AS keep_id,
+                ROW_NUMBER() OVER (
+                  PARTITION BY s.pipeline_id, s.name
+                  ORDER BY (SELECT COUNT(*) FROM leads l WHERE l.stage_id = s.id) DESC,
+                           s.created_at ASC,
+                           s.id ASC
+                ) AS rn
+           FROM lead_stages s
+       ) WHERE rn = 1
+     );
+  `);
+} catch (err) {
+  console.error("[migrate] stage dedupe failed:", err);
+}
 
 // Shared to-do list (assignable). Created here (after users) with its own
 // upgrade ALTERs so older DBs pick up the newer columns.

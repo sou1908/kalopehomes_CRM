@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUserWithRoles } from "@/lib/auth";
 import { defaultSurface, LEAD_SURFACE_ROLES } from "@/lib/roles";
 import { listLeads, listLeadStages } from "@/lib/leads";
-import { listDesks } from "@/lib/desks";
+import { listPipelines } from "@/lib/pipelines";
 import { summarize, followUpState } from "@/lib/leads-shared";
 import { countActiveTodos } from "@/lib/todos";
 import { unreadNotificationCount } from "@/lib/notifications";
@@ -24,12 +24,12 @@ export default async function LeadsLayout({
   if (!user.roles.some((r) => LEAD_SURFACE_ROLES.includes(r)))
     redirect(defaultSurface(user.roles));
 
-  const [leads, stages, desks, todoCount, inboxCount, teamUnread, dmUnread] =
+  const [leads, stages, pipelines, todoCount, inboxCount, teamUnread, dmUnread] =
     user.orgId
       ? await Promise.all([
           listLeads(user.orgId),
           listLeadStages(user.orgId),
-          listDesks(user.orgId),
+          listPipelines(user.orgId),
           countActiveTodos(user.id),
           unreadNotificationCount(user.id),
           unreadChatCount(user.orgId, user.id, user.lastChatReadAt),
@@ -63,7 +63,7 @@ export default async function LeadsLayout({
           }}
           summary={summary}
           stages={stages}
-          desks={desks}
+          pipelines={pipelines}
           attentionCount={attentionCount}
           todoCount={todoCount}
           inboxCount={inboxCount}

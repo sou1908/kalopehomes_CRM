@@ -10,12 +10,12 @@ import {
   leads,
   leadStages,
   leadTags,
-  desks,
+  pipelines,
 } from "./db/schema";
 import {
   DEFAULT_LEAD_STAGES,
   DEFAULT_LEAD_TAGS,
-  DEFAULT_DESKS,
+  DEFAULT_PIPELINES,
 } from "./leads-shared";
 
 let bootstrapPromise: Promise<void> | null = null;
@@ -156,29 +156,76 @@ export function ensureAdminUser(): Promise<void> {
       console.log(`[bootstrap] Seeded ${DEFAULT_LEAD_TAGS.length} default lead tags`);
     }
 
-    // 3f. Seed default handling desks (once), then park any lead with no desk on
-    // the first one (Telecalling). Idempotent.
-    const existingDesks = await db
-      .select({ id: desks.id })
-      .from(desks)
-      .where(eq(desks.orgId, orgId))
-      .orderBy(asc(desks.position));
-    if (existingDesks.length === 0) {
-      for (const d of DEFAULT_DESKS) {
+    // 3f. Seed pipelines and their stages. Each role gets its own pipeline, and
+    // each pipeline owns its stages — "Won" means handed over in the telecaller's
+    // pipeline and an actual sale in Operations. Idempotent in two directions:
+    // pipelines are only seeded when there are none, and a pipeline that somehow
+    // ends up with no stages gets its defaults filled in.
+    const existingPipelines = await db
+      .select({ id: pipelines.id, name: pipelines.name })
+      .from(pipelines)
+      .where(eq(pipelines.orgId, orgId))
+      .orderBy(asc(pipelines.position));
+
+    if (existingPipelines.length === 0) {
+      for (const p of DEFAULT_PIPELINES) {
         const id = nanoid(21);
-        await db
-          .insert(desks)
-          .values({ id, orgId, name: d.name, color: d.color, position: d.position });
-        existingDesks.push({ id });
+        await db.insert(pipelines).values({
+          id,
+          orgId,
+          name: p.name,
+          color: p.color,
+          position: p.position,
+          roles: JSON.stringify(p.roles),
+        });
+        existingPipelines.push({ id, name: p.name });
       }
-      console.log(`[bootstrap] Seeded ${DEFAULT_DESKS.length} default desks`);
+      console.log(`[bootstrap] Seeded ${DEFAULT_PIPELINES.length} pipelines`);
     }
-    const firstDeskId = existingDesks[0]?.id;
-    if (firstDeskId) {
+
+    // Fill in stages for any pipeline that has none (new orgs, and the Site
+    // Visit / Operations pipelines on an upgraded one, which had no stages of
+    // their own before the redesign).
+    for (const p of existingPipelines) {
+      const seed = DEFAULT_PIPELINES.find(
+        (d) => d.name.toLowerCase() === p.name.toLowerCase(),
+      );
+      if (!seed) continue;
+      // Compare by name rather than "has any stages": two concurrent first
+      // requests could otherwise both find the pipeline empty and seed it twice.
+      const present = new Set(
+        (
+          await db
+            .select({ name: leadStages.name })
+            .from(leadStages)
+            .where(and(eq(leadStages.orgId, orgId), eq(leadStages.pipelineId, p.id)))
+        ).map((r) => r.name.toLowerCase()),
+      );
+      if (present.size > 0 && seed.stages.every((st) => present.has(st.name.toLowerCase())))
+        continue;
+      for (const st of seed.stages) {
+        if (present.has(st.name.toLowerCase())) continue;
+        await db.insert(leadStages).values({
+          id: nanoid(21),
+          orgId,
+          pipelineId: p.id,
+          name: st.name,
+          color: st.color,
+          kind: st.kind,
+          position: st.position,
+          probability: st.probability,
+          isExit: st.isExit ?? false,
+        });
+      }
+      console.log(`[bootstrap] Seeded ${seed.stages.length} stages for ${p.name}`);
+    }
+
+    const firstPipelineId = existingPipelines[0]?.id;
+    if (firstPipelineId) {
       await db
         .update(leads)
-        .set({ deskId: firstDeskId })
-        .where(and(eq(leads.orgId, orgId), isNull(leads.deskId)));
+        .set({ pipelineId: firstPipelineId })
+        .where(and(eq(leads.orgId, orgId), isNull(leads.pipelineId)));
     }
 
     // 4. Ensure the admin holds the admin role.

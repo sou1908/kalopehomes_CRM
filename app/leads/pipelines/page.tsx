@@ -1,26 +1,27 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { listLeads } from "@/lib/leads";
-import { listDesks } from "@/lib/desks";
-import { DeskManager, type DeskRowData } from "../_components/desk-manager";
+import { listPipelines } from "@/lib/pipelines";
+import { PipelineManager, type PipelineRowData } from "../_components/pipeline-manager";
 
-export default async function ManageDesksPage() {
+export default async function ManagePipelinesPage() {
   const user = await requireRole(["telecaller", "site_agent", "admin"]);
   const orgId = user.orgId ?? "";
-  const [leads, desks] = await Promise.all([
+  const [leads, pipelines] = await Promise.all([
     orgId ? listLeads(orgId) : Promise.resolve([]),
-    orgId ? listDesks(orgId) : Promise.resolve([]),
+    orgId ? listPipelines(orgId) : Promise.resolve([]),
   ]);
 
   const counts = new Map<string, number>();
   for (const l of leads) {
-    if (l.deskId) counts.set(l.deskId, (counts.get(l.deskId) ?? 0) + 1);
+    if (l.pipelineId) counts.set(l.pipelineId, (counts.get(l.pipelineId) ?? 0) + 1);
   }
-  const rows: DeskRowData[] = desks.map((d) => ({
+  const rows: PipelineRowData[] = pipelines.map((d) => ({
     id: d.id,
     name: d.name,
     color: d.color,
     position: d.position,
+    roles: d.roles,
     count: counts.get(d.id) ?? 0,
   }));
 
@@ -32,14 +33,14 @@ export default async function ManageDesksPage() {
       <div className="mt-3 mb-1 text-xs uppercase tracking-wide text-muted">
         Lead manager
       </div>
-      <h1 className="text-2xl font-semibold tracking-tight">Handling desks</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Handling pipelines</h1>
       <p className="mb-6 mt-1 max-w-xl text-sm text-muted">
-        Desks are the team-handoff track — who’s working a lead right now
-        (Telecalling → Site Visit → Manager). Add your own desks, recolor, rename,
+        Pipelines are the team-handoff track — who’s working a lead right now
+        (Telecalling → Site Visit → Manager). Add your own pipelines, recolor, rename,
         or reorder them. This is separate from the sales stages.
       </p>
 
-      <DeskManager desks={rows} />
+      <PipelineManager pipelines={rows} />
     </div>
   );
 }

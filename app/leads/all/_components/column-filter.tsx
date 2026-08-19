@@ -17,7 +17,7 @@ import { Icon } from "@/app/_components/icons";
  * Four kinds of column:
  *   text   — match on what's typed (Name, Contact)
  *   choice — pick one from a list, with a search box once the list is long
- *            (Assignees, Desk, Stage)
+ *            (Assignees, Pipeline, Stage)
  *   range  — a lower and upper bound (Value)
  *   preset — a fixed set of conditions (Follow-up)
  */

@@ -7,7 +7,7 @@ import { logoutAction } from "@/app/(auth)/actions";
 import { availableSurfaces, type Role } from "@/lib/roles-shared";
 import {
   formatValue,
-  type DeskInfo,
+  type PipelineInfo,
   type LeadStageInfo,
   type LeadSummary,
 } from "@/lib/leads-shared";
@@ -30,7 +30,7 @@ export function LeadsSidebar({
   user,
   summary,
   stages,
-  desks = [],
+  pipelines = [],
   attentionCount,
   todoCount = 0,
   inboxCount = 0,
@@ -39,7 +39,7 @@ export function LeadsSidebar({
   user: { id: string; name: string; email: string; roles: Role[]; presence: Presence };
   summary: LeadSummary;
   stages: LeadStageInfo[];
-  desks?: DeskInfo[];
+  pipelines?: PipelineInfo[];
   attentionCount: number;
   todoCount?: number;
   inboxCount?: number;
@@ -235,26 +235,26 @@ export function LeadsSidebar({
           />
         )}
 
-        {desks.length > 0 && (
+        {pipelines.length > 0 && (
           <>
             <div className="flex items-center justify-between px-3 pb-1.5 pt-5">
               <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
-                Desks
+                Pipelines
               </span>
               <Link
-                href="/leads/desks"
+                href="/leads/pipelines"
                 className="text-muted transition-colors hover:text-accentInk"
-                title="Manage desks"
+                title="Manage pipelines"
               >
                 <Icon name="sliders" size={14} />
               </Link>
             </div>
-            {desks.map((d) => (
+            {pipelines.map((d) => (
               <Link
                 key={d.id}
-                href={`/leads/desk/${d.id}`}
+                href={`/leads/pipeline/${d.id}`}
                 className={`flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm ${
-                  pathname === `/leads/desk/${d.id}`
+                  pathname === `/leads/pipeline/${d.id}`
                     ? "bg-panel text-text"
                     : "text-muted hover:bg-panel hover:text-text"
                 }`}

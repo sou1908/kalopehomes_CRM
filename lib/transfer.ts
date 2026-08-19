@@ -2,8 +2,8 @@ import "server-only";
 import { nanoid } from "nanoid";
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "./db";
-import { desks, leads, leadActivities, users, userRoles } from "./db/schema";
-import { setLeadDesk } from "./desks";
+import { pipelines, leads, leadActivities, users, userRoles } from "./db/schema";
+import { setLeadPipeline } from "./pipelines";
 import { addLeadAssignee } from "./assignees";
 import { createNotification } from "./notifications";
 import type { LeadActor } from "./leads";
@@ -21,24 +21,24 @@ async function leadName(leadId: string, orgId: string): Promise<string> {
 }
 
 /**
- * Step a lead to a desk AND attach a handler there (as primary) in one move.
+ * Step a lead to a pipeline AND attach a handler there (as primary) in one move.
  * Logs a single `transferred` entry and notifies the handler.
  */
 export async function transferLead(
   leadId: string,
   orgId: string,
-  deskId: string,
+  pipelineId: string,
   userId: string,
   actor: LeadActor,
 ): Promise<void> {
-  const desk = (
+  const pipeline = (
     await db
-      .select({ name: desks.name })
-      .from(desks)
-      .where(and(eq(desks.id, deskId), eq(desks.orgId, orgId)))
+      .select({ name: pipelines.name })
+      .from(pipelines)
+      .where(and(eq(pipelines.id, pipelineId), eq(pipelines.orgId, orgId)))
       .limit(1)
   )[0];
-  if (!desk) throw new TransferError("Invalid desk.");
+  if (!pipeline) throw new TransferError("Invalid pipeline.");
   const member = (
     await db
       .select({ name: users.name })
@@ -49,7 +49,7 @@ export async function transferLead(
   if (!member) throw new TransferError("That member isn't in your team.");
   await leadName(leadId, orgId);
 
-  await setLeadDesk(leadId, orgId, deskId, actor, { silent: true });
+  await setLeadPipeline(leadId, orgId, pipelineId, actor, { silent: true });
   // Notifies the handler; we log the combined transfer entry ourselves.
   await addLeadAssignee(leadId, orgId, userId, actor, { primary: true, silent: true });
 
@@ -60,12 +60,12 @@ export async function transferLead(
     userId: actor.userId,
     actorName: actor.name,
     kind: "transferred",
-    body: `Transferred to ${member.name} · ${desk.name} desk`,
+    body: `Transferred to ${member.name} · ${pipeline.name} pipeline`,
   });
 }
 
 /**
- * Escalate a lead to the final (Manager) desk and ping every Lead Manager.
+ * Escalate a lead to the final (Manager) pipeline and ping every Lead Manager.
  * No specific handler required — it surfaces in the managers' inbox.
  */
 export async function escalateToManager(
@@ -75,14 +75,14 @@ export async function escalateToManager(
 ): Promise<void> {
   const all = await db
     .select()
-    .from(desks)
-    .where(eq(desks.orgId, orgId))
-    .orderBy(asc(desks.position));
+    .from(pipelines)
+    .where(eq(pipelines.orgId, orgId))
+    .orderBy(asc(pipelines.position));
   const last = all.at(-1);
-  if (!last) throw new TransferError("No desks configured.");
+  if (!last) throw new TransferError("No pipelines configured.");
   const name = await leadName(leadId, orgId);
 
-  await setLeadDesk(leadId, orgId, last.id, actor, { silent: true });
+  await setLeadPipeline(leadId, orgId, last.id, actor, { silent: true });
   await db.insert(leadActivities).values({
     id: nanoid(21),
     orgId,
@@ -90,7 +90,7 @@ export async function escalateToManager(
     userId: actor.userId,
     actorName: actor.name,
     kind: "transferred",
-    body: `Escalated to the ${last.name} desk`,
+    body: `Escalated to the ${last.name} pipeline`,
   });
 
   const admins = await db

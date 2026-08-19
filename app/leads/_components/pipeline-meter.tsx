@@ -1,30 +1,30 @@
-import type { DeskInfo } from "@/lib/leads-shared";
+import type { PipelineInfo } from "@/lib/leads-shared";
 
 /**
  * Where a lead sits in the handling sequence (Telecalling → Site Visit →
- * Manager), as one segment per desk: passed desks are tinted, the current desk
- * is solid, desks still ahead are left as empty rule.
+ * Manager), as one segment per pipeline: passed pipelines are tinted, the current pipeline
+ * is solid, pipelines still ahead are left as empty rule.
  *
- * The board used to show the desk as a name-only pill, which says where a lead
- * is but not how far along it is. The desks are a genuine ordered track, so
+ * The board used to show the pipeline as a name-only pill, which says where a lead
+ * is but not how far along it is. The pipelines are a genuine ordered track, so
  * position is the more useful fact — and it's the same reading at a glance
  * across a whole column.
  */
-export function DeskMeter({
-  desks,
-  currentDeskId,
+export function PipelineMeter({
+  pipelines,
+  currentPipelineId,
   showLabel = true,
 }: {
-  desks: DeskInfo[];
-  currentDeskId: string | null;
+  pipelines: PipelineInfo[];
+  currentPipelineId: string | null;
   showLabel?: boolean;
 }) {
-  if (desks.length === 0) return null;
+  if (pipelines.length === 0) return null;
 
-  const currentIndex = currentDeskId
-    ? desks.findIndex((d) => d.id === currentDeskId)
+  const currentIndex = currentPipelineId
+    ? pipelines.findIndex((d) => d.id === currentPipelineId)
     : -1;
-  const current = currentIndex >= 0 ? desks[currentIndex] : null;
+  const current = currentIndex >= 0 ? pipelines[currentIndex] : null;
 
   return (
     <div>
@@ -33,11 +33,11 @@ export function DeskMeter({
         role="img"
         aria-label={
           current
-            ? `Desk ${currentIndex + 1} of ${desks.length}: ${current.name}`
-            : "Not on a desk yet"
+            ? `Pipeline ${currentIndex + 1} of ${pipelines.length}: ${current.name}`
+            : "Not on a pipeline yet"
         }
       >
-        {desks.map((d, i) => {
+        {pipelines.map((d, i) => {
           const passed = currentIndex >= 0 && i < currentIndex;
           const isCurrent = i === currentIndex;
           return (
@@ -60,7 +60,7 @@ export function DeskMeter({
       </div>
       {showLabel && (
         <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-muted">
-          {current ? current.name : "Unassigned desk"}
+          {current ? current.name : "Unassigned pipeline"}
         </div>
       )}
     </div>

@@ -3,49 +3,49 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  createDeskAction,
-  updateDeskAction,
-  deleteDeskAction,
-  moveDeskOrderAction,
+  createPipelineAction,
+  updatePipelineAction,
+  deletePipelineAction,
+  movePipelineOrderAction,
 } from "../actions";
-import { STAGE_COLOR_PALETTE, type DeskInfo } from "@/lib/leads-shared";
+import { STAGE_COLOR_PALETTE, type PipelineInfo } from "@/lib/leads-shared";
 
-export type DeskRowData = DeskInfo & { count: number };
+export type PipelineRowData = PipelineInfo & { count: number };
 
-export function DeskManager({ desks }: { desks: DeskRowData[] }) {
+export function PipelineManager({ pipelines }: { pipelines: PipelineRowData[] }) {
   return (
     <div className="space-y-6">
       <section>
-        <h2 className="mb-2 text-sm font-medium">Add a desk</h2>
-        <AddDeskForm />
+        <h2 className="mb-2 text-sm font-medium">Add a pipeline</h2>
+        <AddPipelineForm />
       </section>
 
       <section>
         <h2 className="mb-2 text-sm font-medium">
-          Your desks <span className="ml-1 text-muted">({desks.length})</span>
+          Your pipelines <span className="ml-1 text-muted">({pipelines.length})</span>
         </h2>
         <div className="space-y-2">
-          {desks.map((desk, i) => (
-            <DeskRow
-              key={desk.id}
-              desk={desk}
+          {pipelines.map((pipeline, i) => (
+            <PipelineRow
+              key={pipeline.id}
+              pipeline={pipeline}
               isFirst={i === 0}
-              isLast={i === desks.length - 1}
-              onlyOne={desks.length <= 1}
+              isLast={i === pipelines.length - 1}
+              onlyOne={pipelines.length <= 1}
             />
           ))}
         </div>
         <p className="mt-3 text-[11px] text-muted">
-          Desks are the team-handoff track a lead moves through (e.g. Telecalling →
-          Site Visit → Manager). New leads start on the first desk.
+          Pipelines are the team-handoff track a lead moves through (e.g. Telecalling →
+          Site Visit → Manager). New leads start on the first pipeline.
         </p>
       </section>
     </div>
   );
 }
 
-function AddDeskForm() {
-  const [state, action, pending] = useActionState(createDeskAction, undefined);
+function AddPipelineForm() {
+  const [state, action, pending] = useActionState(createPipelineAction, undefined);
   const [color, setColor] = useState(STAGE_COLOR_PALETTE[0]);
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
@@ -64,9 +64,9 @@ function AddDeskForm() {
     <form ref={formRef} action={action} className="card space-y-3 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1">
-          <label className="label" htmlFor="new-desk-name">Desk name</label>
+          <label className="label" htmlFor="new-pipeline-name">Pipeline name</label>
           <input
-            id="new-desk-name"
+            id="new-pipeline-name"
             name="name"
             required
             placeholder="e.g. Closing"
@@ -74,7 +74,7 @@ function AddDeskForm() {
           />
         </div>
         <button type="submit" disabled={pending} className="btn-primary text-sm">
-          {pending ? "Adding…" : "Add desk"}
+          {pending ? "Adding…" : "Add pipeline"}
         </button>
       </div>
       <ColorSwatches value={color} onChange={setColor} />
@@ -87,30 +87,30 @@ function AddDeskForm() {
   );
 }
 
-function DeskRow({
-  desk,
+function PipelineRow({
+  pipeline,
   isFirst,
   isLast,
   onlyOne,
 }: {
-  desk: DeskRowData;
+  pipeline: PipelineRowData;
   isFirst: boolean;
   isLast: boolean;
   onlyOne: boolean;
 }) {
-  const [color, setColor] = useState(desk.color);
+  const [color, setColor] = useState(pipeline.color);
 
   return (
     <div className="card px-4 py-3">
       <div className="flex items-center gap-3">
-        <span className="text-base" style={{ color: desk.color }}>
+        <span className="text-base" style={{ color: pipeline.color }}>
           ▣
         </span>
-        <span className="text-sm font-medium">{desk.name}</span>
-        <span className="text-xs text-muted">{desk.count} leads</span>
+        <span className="text-sm font-medium">{pipeline.name}</span>
+        <span className="text-xs text-muted">{pipeline.count} leads</span>
         <div className="ml-auto flex items-center gap-1">
-          <ReorderButton deskId={desk.id} direction="up" disabled={isFirst} />
-          <ReorderButton deskId={desk.id} direction="down" disabled={isLast} />
+          <ReorderButton pipelineId={pipeline.id} direction="up" disabled={isFirst} />
+          <ReorderButton pipelineId={pipeline.id} direction="down" disabled={isLast} />
         </div>
       </div>
 
@@ -120,18 +120,18 @@ function DeskRow({
           <span className="hidden group-open:inline">Close ▾</span>
         </summary>
 
-        <form action={updateDeskAction} className="mt-3 space-y-3">
-          <input type="hidden" name="deskId" value={desk.id} />
+        <form action={updatePipelineAction} className="mt-3 space-y-3">
+          <input type="hidden" name="pipelineId" value={pipeline.id} />
           <div>
             <label className="label">Name</label>
-            <input name="name" required defaultValue={desk.name} className="input text-sm" />
+            <input name="name" required defaultValue={pipeline.name} className="input text-sm" />
           </div>
           <ColorSwatches value={color} onChange={setColor} />
           <button type="submit" className="btn-primary text-xs">Save</button>
         </form>
 
         <div className="mt-3 border-t border-border pt-3">
-          <DeleteDeskButton deskId={desk.id} count={desk.count} onlyOne={onlyOne} />
+          <DeletePipelineButton pipelineId={pipeline.id} count={pipeline.count} onlyOne={onlyOne} />
         </div>
       </details>
     </div>
@@ -139,17 +139,17 @@ function DeskRow({
 }
 
 function ReorderButton({
-  deskId,
+  pipelineId,
   direction,
   disabled,
 }: {
-  deskId: string;
+  pipelineId: string;
   direction: "up" | "down";
   disabled: boolean;
 }) {
   return (
-    <form action={moveDeskOrderAction}>
-      <input type="hidden" name="deskId" value={deskId} />
+    <form action={movePipelineOrderAction}>
+      <input type="hidden" name="pipelineId" value={pipelineId} />
       <input type="hidden" name="direction" value={direction} />
       <button
         type="submit"
@@ -163,16 +163,16 @@ function ReorderButton({
   );
 }
 
-function DeleteDeskButton({
-  deskId,
+function DeletePipelineButton({
+  pipelineId,
   count,
   onlyOne,
 }: {
-  deskId: string;
+  pipelineId: string;
   count: number;
   onlyOne: boolean;
 }) {
-  const [state, action, pending] = useActionState(deleteDeskAction, undefined);
+  const [state, action, pending] = useActionState(deletePipelineAction, undefined);
   const router = useRouter();
   const lastHandled = useRef<unknown>(null);
 
@@ -186,20 +186,20 @@ function DeleteDeskButton({
   const blocked = count > 0 || onlyOne;
   return (
     <form action={action}>
-      <input type="hidden" name="deskId" value={deskId} />
+      <input type="hidden" name="pipelineId" value={pipelineId} />
       <button
         type="submit"
         disabled={pending || blocked}
         title={
           onlyOne
-            ? "Keep at least one desk"
+            ? "Keep at least one pipeline"
             : count > 0
-              ? "Move its leads to another desk first"
-              : "Delete desk"
+              ? "Move its leads to another pipeline first"
+              : "Delete pipeline"
         }
         className="rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {pending ? "Deleting…" : "Delete desk"}
+        {pending ? "Deleting…" : "Delete pipeline"}
       </button>
       {count > 0 && (
         <span className="ml-2 text-[11px] text-muted">

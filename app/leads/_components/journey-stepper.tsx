@@ -2,39 +2,39 @@
 
 import {
   journeyFormFor,
-  type DeskInfo,
+  type PipelineInfo,
   type JourneyData,
   type JourneyField,
 } from "@/lib/leads-shared";
-import { DeskStepForm } from "./desk-step-form";
+import { PipelineStepForm } from "./pipeline-step-form";
 
 export function JourneyStepper({
   leadId,
-  desks,
-  currentDeskId,
+  pipelines,
+  currentPipelineId,
   journey,
 }: {
   leadId: string;
-  desks: DeskInfo[];
-  currentDeskId: string | null;
+  pipelines: PipelineInfo[];
+  currentPipelineId: string | null;
   journey: JourneyData;
 }) {
-  if (desks.length === 0) {
-    return <p className="py-6 text-center text-xs text-muted">No desks configured.</p>;
+  if (pipelines.length === 0) {
+    return <p className="py-6 text-center text-xs text-muted">No pipelines configured.</p>;
   }
 
   return (
     <ol className="space-y-4">
-      {desks.map((desk, i) => {
-        const step = journey[desk.id];
+      {pipelines.map((pipeline, i) => {
+        const step = journey[pipeline.id];
         const done = step?.done ?? false;
-        const isCurrent = desk.id === currentDeskId;
-        const fields = journeyFormFor(desk.name);
+        const isCurrent = pipeline.id === currentPipelineId;
+        const fields = journeyFormFor(pipeline.name);
 
         return (
-          <li key={desk.id} className="relative pl-7">
+          <li key={pipeline.id} className="relative pl-7">
             {/* connector */}
-            {i < desks.length - 1 && (
+            {i < pipelines.length - 1 && (
               <span className="absolute left-[10px] top-6 h-[calc(100%+0.5rem)] w-px bg-border" />
             )}
             {/* node */}
@@ -51,10 +51,10 @@ export function JourneyStepper({
             </span>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs" style={{ color: desk.color }}>
+              <span className="text-xs" style={{ color: pipeline.color }}>
                 ▣
               </span>
-              <span className="text-sm font-medium">{desk.name}</span>
+              <span className="text-sm font-medium">{pipeline.name}</span>
               {done ? (
                 <span className="text-[11px] text-success">
                   Done{step?.by ? ` · ${step.by}` : ""}
@@ -74,13 +74,13 @@ export function JourneyStepper({
               )}
             </div>
 
-            {/* The form only shows on the desk the lead is currently on. */}
+            {/* The form only shows on the pipeline the lead is currently on. */}
             {isCurrent ? (
               <div className="mt-2">
-                <DeskStepForm
+                <PipelineStepForm
                   leadId={leadId}
-                  deskId={desk.id}
-                  deskName={desk.name}
+                  pipelineId={pipeline.id}
+                  pipelineName={pipeline.name}
                   step={step}
                 />
               </div>

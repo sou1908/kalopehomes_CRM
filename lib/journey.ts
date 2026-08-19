@@ -1,20 +1,20 @@
 import "server-only";
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "./db";
-import { leads, desks } from "./db/schema";
+import { leads, pipelines } from "./db/schema";
 import { parseJourney } from "./leads-shared";
-import { setLeadDesk } from "./desks";
+import { setLeadPipeline } from "./pipelines";
 import type { LeadActor } from "./leads";
 
 /**
- * [PROTOTYPE] Save a lead's journey step for one desk. Merges the captured
+ * [PROTOTYPE] Save a lead's journey step for one pipeline. Merges the captured
  * field values; when `complete`, stamps who/when and advances the lead to the
- * next desk (soft — nothing is blocked).
+ * next pipeline (soft — nothing is blocked).
  */
 export async function saveJourneyStep(input: {
   leadId: string;
   orgId: string;
-  deskId: string;
+  pipelineId: string;
   values: Record<string, string>;
   complete: boolean;
   actor: LeadActor;
@@ -27,8 +27,8 @@ export async function saveJourneyStep(input: {
   if (rows.length === 0) return;
 
   const journey = parseJourney(rows[0].journey);
-  const prev = journey[input.deskId];
-  journey[input.deskId] = {
+  const prev = journey[input.pipelineId];
+  journey[input.pipelineId] = {
     done: input.complete ? true : prev?.done ?? false,
     by: input.complete ? input.actor.name : prev?.by ?? null,
     at: input.complete ? Date.now() : prev?.at ?? null,
@@ -40,17 +40,17 @@ export async function saveJourneyStep(input: {
     .set({ journey: JSON.stringify(journey), updatedAt: new Date() })
     .where(and(eq(leads.id, input.leadId), eq(leads.orgId, input.orgId)));
 
-  // On completion, move the lead to the next desk in order (logs a desk_change).
+  // On completion, move the lead to the next pipeline in order (logs a pipeline_change).
   if (input.complete) {
     const all = await db
       .select()
-      .from(desks)
-      .where(eq(desks.orgId, input.orgId))
-      .orderBy(asc(desks.position));
-    const idx = all.findIndex((d) => d.id === input.deskId);
+      .from(pipelines)
+      .where(eq(pipelines.orgId, input.orgId))
+      .orderBy(asc(pipelines.position));
+    const idx = all.findIndex((d) => d.id === input.pipelineId);
     const next = all[idx + 1];
     if (next) {
-      await setLeadDesk(input.leadId, input.orgId, next.id, input.actor);
+      await setLeadPipeline(input.leadId, input.orgId, next.id, input.actor);
     }
   }
 }

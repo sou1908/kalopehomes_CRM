@@ -119,7 +119,7 @@ export default async function ImportLeadsPage() {
           </li>
           <li>
             <span className="text-text">Imported leads</span> start on the first
-            desk, ready to be called, and each one gets a &ldquo;Lead
+            pipeline, ready to be called, and each one gets a &ldquo;Lead
             created&rdquo; entry in its activity log.
           </li>
         </ul>

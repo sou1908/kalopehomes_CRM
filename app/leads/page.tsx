@@ -1,27 +1,47 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { listLeads, listLeadStages, tagsForLeads } from "@/lib/leads";
-import { listDesks } from "@/lib/desks";
+import { listPipelines, pipelinesForRoles } from "@/lib/pipelines";
 import {
   formatValue,
   summarize,
   followUpState,
-  type DeskInfo,
+  type PipelineInfo,
   type LeadStageInfo,
   type LeadTagInfo,
 } from "@/lib/leads-shared";
 import { StageMenu } from "./_components/stage-menu";
-import { DeskMeter } from "./_components/desk-meter";
+import { PipelineMeter } from "./_components/pipeline-meter";
 import { Icon } from "@/app/_components/icons";
 
-export default async function LeadsHomePage() {
-  const user = await requireRole(["telecaller", "site_agent", "admin"]);
+export default async function LeadsHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pipeline?: string }>;
+}) {
+  const user = await requireRole(["telecaller", "site_agent", "admin", "operation_manager"]);
   const orgId = user.orgId ?? "";
-  const [leads, stages, desks] = await Promise.all([
+  const { pipeline: wanted } = await searchParams;
+
+  const [allLeads, allStages, allPipelines] = await Promise.all([
     orgId ? listLeads(orgId) : Promise.resolve([]),
     orgId ? listLeadStages(orgId) : Promise.resolve([]),
-    orgId ? listDesks(orgId) : Promise.resolve([]),
+    orgId ? listPipelines(orgId) : Promise.resolve([]),
   ]);
+
+  // Each role works its own pipeline, so the board shows one at a time. You land
+  // on yours; admins see all of them and can switch.
+  const mine = pipelinesForRoles(allPipelines, user.roles);
+  const visible = mine.length > 0 ? mine : allPipelines;
+  const active = visible.find((p) => p.id === wanted) ?? visible[0] ?? null;
+
+  const stages = active
+    ? allStages.filter((s) => s.pipelineId === active.id)
+    : [];
+  const leads = active
+    ? allLeads.filter((l) => l.pipelineId === active.id)
+    : [];
+
   const tagsByLead = await tagsForLeads(leads.map((l) => l.id));
   const stats = summarize(leads, stages);
   const now = Date.now();
@@ -39,11 +59,32 @@ export default async function LeadsHomePage() {
       <div className="mb-7 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
-            Lead manager
+            Pipeline
           </div>
           <h1 className="font-display text-[34px] font-medium leading-none tracking-[-0.015em]">
-            Pipeline
+            {active?.name ?? "No pipeline"}
           </h1>
+          {visible.length > 1 && (
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+              {visible.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/leads?pipeline=${p.id}`}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                    p.id === active?.id
+                      ? "border-accent/50 text-text"
+                      : "border-border text-muted hover:border-accent/50 hover:text-text"
+                  }`}
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: p.color }}
+                  />
+                  {p.name}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap items-end gap-x-7 gap-y-4">
           {/* Portfolio figures. Mono + tabular so the columns align and a
@@ -87,10 +128,10 @@ export default async function LeadsHomePage() {
             Add your first one with <span className="text-accentInk">New lead</span>.
             Each lead moves across the pipeline as the conversation progresses, and
             along the{" "}
-            {desks.length > 0
-              ? desks.map((d) => d.name).join(" → ")
-              : "handling desks"}{" "}
-            desks as your team hands it on.
+            {allPipelines.length > 0
+              ? allPipelines.map((d) => d.name).join(" → ")
+              : "handling"}{" "}
+            pipelines as your team hands it on.
           </p>
         </div>
       ) : (
@@ -129,7 +170,7 @@ export default async function LeadsHomePage() {
                       lead={lead}
                       stages={stages}
                       tags={tagsByLead.get(lead.id) ?? []}
-                      desks={desks}
+                      pipelines={allPipelines}
                       now={now}
                     />
                   ))}
@@ -181,7 +222,7 @@ function LeadCard({
   lead,
   stages,
   tags,
-  desks,
+  pipelines,
   now,
 }: {
   lead: {
@@ -190,13 +231,13 @@ function LeadCard({
     company: string | null;
     email: string | null;
     stageId: string | null;
-    deskId: string | null;
+    pipelineId: string | null;
     estimatedValue: number | null;
     followUpAt: Date | null;
   };
   stages: LeadStageInfo[];
   tags: LeadTagInfo[];
-  desks: DeskInfo[];
+  pipelines: PipelineInfo[];
   now: number;
 }) {
   const value = formatValue(lead.estimatedValue);
@@ -264,7 +305,7 @@ function LeadCard({
       )}
 
       <div className="mt-2.5">
-        <DeskMeter desks={desks} currentDeskId={lead.deskId} />
+        <PipelineMeter pipelines={pipelines} currentPipelineId={lead.pipelineId} />
       </div>
 
       <div className="mt-2.5 flex items-center gap-2">

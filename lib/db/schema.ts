@@ -196,11 +196,13 @@ export const leads = sqliteTable("leads", {
   pincode: text("pincode"),
   country: text("country"),
   notes: text("notes").notNull().default(""),
-  // Current handling desk (Telecalling → Site Visit → Manager) — the team-handoff
-  // track, independent of the sales stage. SET NULL falls back to the first desk.
-  deskId: text("desk_id").references(() => desks.id, { onDelete: "set null" }),
-  // [PROTOTYPE] Per-desk journey/milestone data, JSON keyed by deskId:
-  // { [deskId]: { done, by, at, fields: {key: value} } }. See lib/journey.ts.
+  // The pipeline this lead is currently being worked in — i.e. whose queue it
+  // sits in. `stageId` must always be a stage belonging to this pipeline.
+  pipelineId: text("pipeline_id").references(() => pipelines.id, {
+    onDelete: "set null",
+  }),
+  // [PROTOTYPE] Per-pipeline journey/milestone data, JSON keyed by pipelineId:
+  // { [pipelineId]: { done, by, at, fields: {key: value} } }. See lib/journey.ts.
   journey: text("journey").notNull().default("{}"),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
@@ -212,10 +214,11 @@ export const leads = sqliteTable("leads", {
 
 export type Lead = typeof leads.$inferSelect;
 
-// Handling desks — the team-handoff track a lead moves through (Telecalling →
-// Site Visit → Manager). Per-org + user-definable (like stages), ordered by
-// position. Distinct from sales stages, which track how close the deal is.
-export const desks = sqliteTable("desks", {
+// Pipelines — one per role, in the order a lead travels them (Telecalling →
+// Site Visit → Operations). Each owns its own stages, so every role works a
+// board built from its own vocabulary rather than a shared sales funnel.
+// Per-org and user-definable, ordered by position.
+export const pipelines = sqliteTable("pipelines", {
   id: text("id").primaryKey(),
   orgId: text("org_id")
     .notNull()
@@ -223,12 +226,19 @@ export const desks = sqliteTable("desks", {
   name: text("name").notNull(),
   color: text("color").notNull().default("#6a89a8"),
   position: integer("position").notNull().default(0),
+  // Roles that work this pipeline, as a JSON array of role keys. Admins see
+  // every pipeline regardless. Empty = nobody but admins.
+  roles: text("roles").notNull().default("[]"),
+  // The step form for this pipeline, as a JSON array of JourneyField. Lives on
+  // the row (not keyed by name in code) so renaming a pipeline can't orphan it.
+  fields: text("fields").notNull().default("[]"),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),
 });
 
-export type Desk = typeof desks.$inferSelect;
+export type Pipeline = typeof pipelines.$inferSelect;
+export type LeadPipelineHistory = typeof leadPipelineHistory.$inferSelect;
 
 // Multiple staff can work one lead at once (e.g. a telecaller AND a field agent).
 // One row per (lead, user); `isPrimary` marks the main responsible person.
@@ -258,6 +268,12 @@ export const leadStages = sqliteTable("lead_stages", {
   orgId: text("org_id")
     .notNull()
     .references(() => organizations.id, { onDelete: "cascade" }),
+  // Which pipeline this stage belongs to. Each role has its own pipeline, so
+  // "Won" means something different in each: for the telecaller it means handed
+  // over to a site agent, not a sale.
+  pipelineId: text("pipeline_id").references(() => pipelines.id, {
+    onDelete: "cascade",
+  }),
   name: text("name").notNull(),
   color: text("color").notNull().default("#6a89a8"),
   kind: text("kind", { enum: ["open", "won", "lost"] })
@@ -266,7 +282,39 @@ export const leadStages = sqliteTable("lead_stages", {
   position: integer("position").notNull().default(0),
   // Win probability 0–100 for the weighted forecast. Null → derived from kind.
   probability: integer("probability"),
+  // Reaching this stage completes the pipeline and hands the lead to the next
+  // one. Only one per pipeline is meaningful.
+  isExit: integer("is_exit", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
+/**
+ * A lead's completed run through one pipeline. Written on handoff, so the
+ * telecaller keeps seeing a lead as Won in *their* pipeline while the site
+ * agent works it in theirs — a lead only has one current stage, so the finished
+ * ones have to be recorded rather than inferred.
+ */
+export const leadPipelineHistory = sqliteTable("lead_pipeline_history", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  leadId: text("lead_id")
+    .notNull()
+    .references(() => leads.id, { onDelete: "cascade" }),
+  pipelineId: text("pipeline_id").references(() => pipelines.id, {
+    onDelete: "cascade",
+  }),
+  /** The stage the lead left on — normally that pipeline's exit stage. */
+  stageId: text("stage_id").references(() => leadStages.id, {
+    onDelete: "set null",
+  }),
+  byUserId: text("by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  completedAt: integer("completed_at", { mode: "timestamp_ms" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),
 });
@@ -321,7 +369,7 @@ export const leadActivities = sqliteTable("lead_activities", {
       "created",
       "converted",
       "assigned",
-      "desk_change",
+      "pipeline_change",
       "transferred",
     ],
   }).notNull(),

@@ -1,26 +1,26 @@
 "use client";
 
-import type { DeskInfo } from "@/lib/leads-shared";
-import { setLeadDeskAction } from "../actions";
+import type { PipelineInfo } from "@/lib/leads-shared";
+import { setLeadPipelineAction } from "../actions";
 
-/** Inline desk changer — submits on change, moving the lead to another desk. */
-export function DeskMenu({
+/** Inline pipeline changer — submits on change, moving the lead to another pipeline. */
+export function PipelineMenu({
   leadId,
   value,
-  desks,
+  pipelines,
   className,
 }: {
   leadId: string;
   value: string | null;
-  desks: DeskInfo[];
+  pipelines: PipelineInfo[];
   className?: string;
 }) {
   return (
-    <form action={setLeadDeskAction}>
+    <form action={setLeadPipelineAction}>
       <input type="hidden" name="leadId" value={leadId} />
       <select
         key={value ?? ""}
-        name="deskId"
+        name="pipelineId"
         defaultValue={value ?? ""}
         onClick={(e) => e.stopPropagation()}
         onChange={(e) => (e.currentTarget.form as HTMLFormElement)?.requestSubmit()}
@@ -29,7 +29,7 @@ export function DeskMenu({
           "rounded-md border border-border bg-panel px-2 py-1 text-[11px] text-text"
         }
       >
-        {desks.map((d) => (
+        {pipelines.map((d) => (
           <option key={d.id} value={d.id}>
             {d.name}
           </option>

@@ -8,7 +8,7 @@ import {
   leadIdsWithTag,
 } from "@/lib/leads";
 import { listAssignableMembers } from "@/lib/members";
-import { listDesks } from "@/lib/desks";
+import { listPipelines } from "@/lib/pipelines";
 import { assigneesForLeads } from "@/lib/assignees";
 import { formatValue, followUpState } from "@/lib/leads-shared";
 import { initials, colorFromName } from "@/lib/avatar";
@@ -24,7 +24,7 @@ export default async function AllLeadsPage({
     q?: string;
     filter?: string;
     owner?: string;
-    desk?: string;
+    pipeline?: string;
     // Per-column filters (the funnel on each heading).
     name?: string;
     contact?: string;
@@ -36,7 +36,7 @@ export default async function AllLeadsPage({
   const user = await requireRole(["telecaller", "site_agent", "admin"]);
   const orgId = user.orgId ?? "";
   const sp = await searchParams;
-  const { stage, tag, q, filter, owner, desk } = sp;
+  const { stage, tag, q, filter, owner, pipeline } = sp;
   const query = (q ?? "").trim().toLowerCase();
 
   // Column filters
@@ -53,28 +53,28 @@ export default async function AllLeadsPage({
   // owner=me → my leads; owner=<id> → that member's leads.
   const ownerId = owner === "me" ? user.id : owner || null;
 
-  const [all, stages, allTags, members, desks] = await Promise.all([
+  const [all, stages, allTags, members, pipelines] = await Promise.all([
     orgId ? listLeads(orgId) : Promise.resolve([]),
     orgId ? listLeadStages(orgId) : Promise.resolve([]),
     orgId ? listLeadTags(orgId) : Promise.resolve([]),
     orgId ? listAssignableMembers(orgId) : Promise.resolve([]),
-    orgId ? listDesks(orgId) : Promise.resolve([]),
+    orgId ? listPipelines(orgId) : Promise.resolve([]),
   ]);
   const memberName = new Map(members.map((m) => [m.id, m.name]));
-  const deskById = new Map(desks.map((d) => [d.id, d]));
+  const pipelineById = new Map(pipelines.map((d) => [d.id, d]));
   const assigneeMap = await assigneesForLeads(all.map((l) => l.id));
   const isAssigned = (leadId: string, uid: string) =>
     (assigneeMap.get(leadId) ?? []).some((a) => a.userId === uid);
   const activeStage = stages.find((s) => s.id === stage) ?? null;
   const activeTag = allTags.find((t) => t.id === tag) ?? null;
-  const activeDesk = desks.find((d) => d.id === desk) ?? null;
+  const activePipeline = pipelines.find((d) => d.id === pipeline) ?? null;
   const openStageIds = new Set(stages.filter((s) => s.kind === "open").map((s) => s.id));
   const tagged = activeTag ? await leadIdsWithTag(activeTag.id) : null;
   const now = Date.now();
 
   let leads = all;
   if (ownerId) leads = leads.filter((l) => isAssigned(l.id, ownerId));
-  if (activeDesk) leads = leads.filter((l) => l.deskId === activeDesk.id);
+  if (activePipeline) leads = leads.filter((l) => l.pipelineId === activePipeline.id);
   if (activeStage) leads = leads.filter((l) => l.stageId === activeStage.id);
   if (tagged) leads = leads.filter((l) => tagged.has(l.id));
   if (attention)
@@ -149,7 +149,7 @@ export default async function AllLeadsPage({
         {activeTag && <input type="hidden" name="tag" value={activeTag.id} />}
         {attention && <input type="hidden" name="filter" value="attention" />}
         {owner && <input type="hidden" name="owner" value={owner} />}
-        {activeDesk && <input type="hidden" name="desk" value={activeDesk.id} />}
+        {activePipeline && <input type="hidden" name="pipeline" value={activePipeline.id} />}
         {/* Keep the column funnels applied when searching. */}
         {sp.name && <input type="hidden" name="name" value={sp.name} />}
         {sp.contact && <input type="hidden" name="contact" value={sp.contact} />}
@@ -168,7 +168,7 @@ export default async function AllLeadsPage({
           activeTag ||
           attention ||
           ownerId ||
-          activeDesk ||
+          activePipeline ||
           nameQ ||
           contactQ ||
           vmin != null ||
@@ -211,17 +211,17 @@ export default async function AllLeadsPage({
         ))}
       </div>
 
-      {/* Desk filter chips */}
-      {desks.length > 0 && (
+      {/* Pipeline filter chips */}
+      {pipelines.length > 0 && (
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <span className="text-[11px] uppercase tracking-wide text-muted">Desk</span>
-          {desks.map((d) => (
+          <span className="text-[11px] uppercase tracking-wide text-muted">Pipeline</span>
+          {pipelines.map((d) => (
             <FilterChip
               key={d.id}
-              href={withQ(`/leads/all?desk=${d.id}`, q)}
+              href={withQ(`/leads/all?pipeline=${d.id}`, q)}
               label={d.name}
-              active={activeDesk?.id === d.id}
-              count={all.filter((l) => l.deskId === d.id).length}
+              active={activePipeline?.id === d.id}
+              count={all.filter((l) => l.pipelineId === d.id).length}
               color={d.color}
             />
           ))}
@@ -303,17 +303,17 @@ export default async function AllLeadsPage({
                   </th>
                   <th className="hidden px-4 py-2.5 font-medium md:table-cell">
                     <span className="inline-flex items-center gap-1.5">
-                      Desk
+                      Pipeline
                       <ColumnFilter
                         kind="choice"
-                        label="Desk"
-                        param="desk"
+                        label="Pipeline"
+                        param="pipeline"
                         params={allParams}
-                        options={desks.map((d) => ({
+                        options={pipelines.map((d) => ({
                           value: d.id,
                           label: d.name,
                           color: d.color,
-                          count: all.filter((l) => l.deskId === d.id).length,
+                          count: all.filter((l) => l.pipelineId === d.id).length,
                         }))}
                       />
                     </span>
@@ -445,13 +445,13 @@ export default async function AllLeadsPage({
                         })()}
                       </td>
                       <td className="hidden px-4 py-3 md:table-cell">
-                        {lead.deskId && deskById.has(lead.deskId) ? (
+                        {lead.pipelineId && pipelineById.has(lead.pipelineId) ? (
                           <span className="inline-flex items-center gap-1.5 text-muted">
                             <span
                               className="inline-block h-1.5 w-1.5 rounded-full"
-                              style={{ background: deskById.get(lead.deskId)!.color }}
+                              style={{ background: pipelineById.get(lead.pipelineId)!.color }}
                             />
-                            {deskById.get(lead.deskId)!.name}
+                            {pipelineById.get(lead.pipelineId)!.name}
                           </span>
                         ) : (
                           <span className="text-muted">—</span>

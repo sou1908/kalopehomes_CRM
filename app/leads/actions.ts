@@ -25,13 +25,13 @@ import {
   LeadError,
 } from "@/lib/leads";
 import {
-  setLeadDesk,
-  createDesk,
-  updateDesk,
-  deleteDesk,
-  moveDesk,
-  DeskError,
-} from "@/lib/desks";
+  setLeadPipeline,
+  createPipeline,
+  updatePipeline,
+  deletePipeline,
+  movePipeline,
+  PipelineError,
+} from "@/lib/pipelines";
 import {
   addLeadAssignee,
   removeLeadAssignee,
@@ -209,7 +209,7 @@ export async function setPrimaryAssigneeAction(formData: FormData) {
   revalidateLead(id);
 }
 
-/** Move a lead to a desk AND hand it to a person there (combined transfer). */
+/** Move a lead to a pipeline AND hand it to a person there (combined transfer). */
 export async function transferLeadAction(
   _prev: LeadFormState,
   formData: FormData,
@@ -217,12 +217,12 @@ export async function transferLeadAction(
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return { error: "No organization." };
   const id = String(formData.get("leadId") ?? "");
-  const deskId = String(formData.get("deskId") ?? "");
+  const pipelineId = String(formData.get("pipelineId") ?? "");
   const userId = String(formData.get("userId") ?? "");
-  if (!deskId || !userId)
-    return { error: "Pick both a desk and a person to transfer to." };
+  if (!pipelineId || !userId)
+    return { error: "Pick both a pipeline and a person to transfer to." };
   try {
-    await transferLead(id, user.orgId, deskId, userId, {
+    await transferLead(id, user.orgId, pipelineId, userId, {
       userId: user.id,
       name: user.name,
     });
@@ -234,12 +234,12 @@ export async function transferLeadAction(
   return { ok: true };
 }
 
-/** [PROTOTYPE] Save / complete a desk's journey step. */
+/** [PROTOTYPE] Save / complete a pipeline's journey step. */
 export async function saveJourneyStepAction(formData: FormData) {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return;
   const leadId = String(formData.get("leadId") ?? "");
-  const deskId = String(formData.get("deskId") ?? "");
+  const pipelineId = String(formData.get("pipelineId") ?? "");
   const complete = String(formData.get("intent") ?? "") === "complete";
   const keys = String(formData.get("fieldKeys") ?? "")
     .split(",")
@@ -250,16 +250,16 @@ export async function saveJourneyStepAction(formData: FormData) {
   await saveJourneyStep({
     leadId,
     orgId: user.orgId,
-    deskId,
+    pipelineId,
     values,
     complete,
     actor: { userId: user.id, name: user.name },
   });
   revalidatePath(`/leads/${leadId}`);
-  if (deskId) revalidatePath(`/leads/desk/${deskId}`);
+  if (pipelineId) revalidatePath(`/leads/pipeline/${pipelineId}`);
 }
 
-/** Escalate a lead to the Manager desk + notify the Lead Manager(s). */
+/** Escalate a lead to the Manager pipeline + notify the Lead Manager(s). */
 export async function escalateLeadAction(formData: FormData) {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return;
@@ -273,17 +273,17 @@ export async function escalateLeadAction(formData: FormData) {
   revalidateLead(id);
 }
 
-/** Move a lead to a handling desk (inline desk menu). */
-export async function setLeadDeskAction(formData: FormData) {
+/** Move a lead to a handling pipeline (inline pipeline menu). */
+export async function setLeadPipelineAction(formData: FormData) {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return;
   const id = String(formData.get("leadId") ?? "");
-  const deskId = String(formData.get("deskId") ?? "");
-  if (!deskId) return;
+  const pipelineId = String(formData.get("pipelineId") ?? "");
+  if (!pipelineId) return;
   try {
-    await setLeadDesk(id, user.orgId, deskId, { userId: user.id, name: user.name });
+    await setLeadPipeline(id, user.orgId, pipelineId, { userId: user.id, name: user.name });
   } catch (err) {
-    if (!(err instanceof DeskError)) throw err;
+    if (!(err instanceof PipelineError)) throw err;
     return;
   }
   revalidatePath("/leads");
@@ -291,72 +291,72 @@ export async function setLeadDeskAction(formData: FormData) {
   revalidatePath(`/leads/${id}`);
 }
 
-// ── Desk management ───────────────────────────────────────────────────────────
+// ── Pipeline management ───────────────────────────────────────────────────────────
 
-export async function createDeskAction(
+export async function createPipelineAction(
   _prev: LeadFormState,
   formData: FormData,
 ): Promise<LeadFormState> {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return { error: "No organization." };
   try {
-    await createDesk({
+    await createPipeline({
       orgId: user.orgId,
       name: String(formData.get("name") ?? ""),
       color: String(formData.get("color") ?? "") || undefined,
     });
   } catch (err) {
-    if (err instanceof DeskError) return { error: err.message };
+    if (err instanceof PipelineError) return { error: err.message };
     throw err;
   }
-  revalidateDeskSurfaces();
+  revalidatePipelineSurfaces();
   return { ok: true };
 }
 
-export async function updateDeskAction(formData: FormData) {
+export async function updatePipelineAction(formData: FormData) {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return;
-  const id = String(formData.get("deskId") ?? "");
+  const id = String(formData.get("pipelineId") ?? "");
   try {
-    await updateDesk(id, user.orgId, {
+    await updatePipeline(id, user.orgId, {
       name: String(formData.get("name") ?? ""),
       color: String(formData.get("color") ?? "") || undefined,
     });
   } catch (err) {
-    if (!(err instanceof DeskError)) throw err;
+    if (!(err instanceof PipelineError)) throw err;
   }
-  revalidateDeskSurfaces();
+  revalidatePipelineSurfaces();
 }
 
-export async function deleteDeskAction(
+export async function deletePipelineAction(
   _prev: LeadFormState,
   formData: FormData,
 ): Promise<LeadFormState> {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return { error: "No organization." };
   try {
-    await deleteDesk(String(formData.get("deskId") ?? ""), user.orgId);
+    await deletePipeline(String(formData.get("pipelineId") ?? ""), user.orgId);
   } catch (err) {
-    if (err instanceof DeskError) return { error: err.message };
+    if (err instanceof PipelineError) return { error: err.message };
     throw err;
   }
-  revalidateDeskSurfaces();
+  revalidatePipelineSurfaces();
   return { ok: true };
 }
 
-export async function moveDeskOrderAction(formData: FormData) {
+export async function movePipelineOrderAction(formData: FormData) {
   const user = await requireRole([...LEAD_ROLES]);
   if (!user.orgId) return;
-  const id = String(formData.get("deskId") ?? "");
+  const id = String(formData.get("pipelineId") ?? "");
   const dir = String(formData.get("direction") ?? "") === "down" ? "down" : "up";
-  await moveDesk(id, user.orgId, dir);
-  revalidateDeskSurfaces();
+  await movePipeline(id, user.orgId, dir);
+  revalidatePipelineSurfaces();
 }
 
-function revalidateDeskSurfaces() {
+function revalidatePipelineSurfaces() {
   revalidatePath("/leads");
   revalidatePath("/leads/all");
-  revalidatePath("/leads/desks");
+  revalidatePath("/leads/pipelines");
 }
 
 /** Set or clear a lead's follow-up reminder date. */
