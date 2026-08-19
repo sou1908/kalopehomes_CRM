@@ -71,100 +71,121 @@ export function JourneyStepper({
 
   const lastDone = state.reduce((acc, s) => (s.done ? s.index : acc), -1);
   const reached = currentIndex >= 0 ? currentIndex : lastDone;
-  const progress =
-    pipelines.length > 1 ? (Math.max(reached, 0) / (pipelines.length - 1)) * 100 : 0;
+  /** Where node `i` sits across the track, as a percentage of the width. */
+  const centre = (i: number) => ((i + 0.5) / pipelines.length) * 100;
 
   return (
     <div>
-      {/* ── The track ── */}
-      <div className="relative px-2 pt-1">
-        <div
-          aria-hidden
-          className="absolute left-0 right-0 top-[9px] mx-[12%] border-t-2 border-dotted border-border"
-        />
-        <div
-          aria-hidden
-          className="absolute left-0 top-[9px] mx-[12%] border-t-2 border-accent/60 transition-[width] duration-500"
-          style={{ width: `calc(${progress}% - 0px)`, maxWidth: "76%" }}
-        />
+      {/* ── The track ──
+          Geometry is derived, not guessed: with N nodes in equal columns, node
+          i sits at ((i + 0.5) / N) of the width. Segments are drawn between
+          those exact centres, so the line can never overhang the end nodes.
 
-        <ol className="relative flex items-start justify-between">
-          {state.map(({ pipeline, step, left, done, isCurrent }) => {
-            const isShown = pipeline.id === shown.pipeline.id;
+          A travelled segment fades from one pipeline's colour into the next —
+          the handover drawn as one team's colour becoming another's. */}
+      <div className="px-1 pt-1">
+        <div className="relative">
+          {pipelines.slice(0, -1).map((p, i) => {
+            const from = centre(i);
+            const to = centre(i + 1);
+            const travelled = reached > i;
+            const next = pipelines[i + 1];
             return (
-              <li key={pipeline.id} className="flex flex-1 flex-col items-center px-1">
-                <button
-                  type="button"
-                  onClick={() => setSelectedId(pipeline.id)}
-                  aria-current={isShown ? "step" : undefined}
-                  title={`Show the ${pipeline.name} step`}
-                  className="group flex w-full flex-col items-center rounded-lg px-1 py-1 text-center transition-colors hover:bg-elevated focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                >
-                  <span
-                    className={`relative z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 bg-panel text-[9px] transition-transform ${
-                      done
-                        ? "border-transparent text-black"
-                        : isCurrent
-                          ? "scale-110 border-transparent"
-                          : "border-border text-muted"
-                    }`}
-                    style={
-                      done || isCurrent
-                        ? {
-                            backgroundColor: pipeline.color,
-                            boxShadow: isCurrent
-                              ? `0 0 0 4px ${pipeline.color}33, 0 0 12px ${pipeline.color}66`
-                              : undefined,
-                          }
-                        : undefined
-                    }
-                  >
-                    {done ? "✓" : ""}
-                  </span>
-
-                  <span
-                    className={`mt-3 font-display text-[15px] leading-tight tracking-[-0.01em] ${
-                      isShown
-                        ? "text-text underline decoration-accent/60 underline-offset-[6px]"
-                        : isCurrent || done
-                          ? "text-text"
-                          : "text-muted group-hover:text-text"
-                    }`}
-                  >
-                    {pipeline.name}
-                  </span>
-
-                  <span className="mt-1 font-mono text-[9px] uppercase leading-relaxed tracking-[0.14em]">
-                    {done ? (
-                      <span className="text-success">
-                        {step?.done ? "Done" : "Handed on"}
-                        {step?.at ?? left?.at ? (
-                          <span suppressHydrationWarning>
-                            {" · " +
-                              new Date((step?.at ?? left?.at)!).toLocaleDateString(
-                                "en-IN",
-                                { day: "numeric", month: "short" },
-                              )}
-                          </span>
-                        ) : null}
-                      </span>
-                    ) : isCurrent ? (
-                      <span className="text-accentInk">In progress</span>
-                    ) : (
-                      <span className="text-muted/70">Pending</span>
-                    )}
-                  </span>
-
-                  {done && (step?.by ?? left?.by) && (
-                    <span className="mt-0.5 text-[10px] text-muted">
-                      {step?.by ?? left?.by}
-                    </span>
-                  )}
-                </button>
-              </li>
+              <span
+                key={`seg-${p.id}`}
+                aria-hidden
+                className={`absolute top-[10px] h-[2px] ${
+                  travelled ? "" : "border-t-2 border-dotted border-border"
+                }`}
+                style={{
+                  left: `${from}%`,
+                  width: `${to - from}%`,
+                  ...(travelled
+                    ? {
+                        backgroundImage: `linear-gradient(90deg, ${p.color}, ${next.color})`,
+                      }
+                    : {}),
+                }}
+              />
             );
           })}
-        </ol>
+
+          <ol className="relative flex items-start justify-between">
+            {state.map(({ pipeline, step, left, done, isCurrent }) => {
+              const isShown = pipeline.id === shown.pipeline.id;
+              return (
+                <li key={pipeline.id} className="flex flex-1 flex-col items-center">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(pipeline.id)}
+                    aria-current={isShown ? "step" : undefined}
+                    title={`Show the ${pipeline.name} step`}
+                    className={`group flex w-full flex-col items-center rounded-lg px-1 pb-2 pt-0 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                      isShown ? "bg-elevated" : "hover:bg-elevated/60"
+                    }`}
+                  >
+                    {/* State is carried by FORM, so it survives greyscale:
+                        filled + tick = done, ring = being worked, hairline
+                        outline = not reached. Colour only says which pipeline. */}
+                    <span
+                      className="relative z-10 flex h-[22px] w-[22px] items-center justify-center rounded-full text-[10px] font-semibold transition-transform"
+                      style={
+                        done
+                          ? { backgroundColor: pipeline.color, color: "#0a0a0b" }
+                          : isCurrent
+                            ? {
+                                backgroundColor: "rgb(var(--c-panel))",
+                                boxShadow: `inset 0 0 0 3px ${pipeline.color}, 0 0 0 4px ${pipeline.color}22`,
+                              }
+                            : {
+                                backgroundColor: "rgb(var(--c-panel))",
+                                boxShadow: "inset 0 0 0 1.5px rgb(var(--c-border))",
+                              }
+                      }
+                    >
+                      {done ? "✓" : ""}
+                    </span>
+
+                    <span
+                      className={`mt-3 font-display text-[15px] leading-tight tracking-[-0.01em] ${
+                        isCurrent || done ? "text-text" : "text-muted"
+                      }`}
+                    >
+                      {pipeline.name}
+                    </span>
+
+                    <span className="mt-1 font-mono text-[9px] uppercase leading-relaxed tracking-[0.14em]">
+                      {done ? (
+                        <span className="text-muted">
+                          {step?.done ? "Done" : "Handed on"}
+                          {step?.at ?? left?.at ? (
+                            <span suppressHydrationWarning>
+                              {" · " +
+                                new Date((step?.at ?? left?.at)!).toLocaleDateString(
+                                  "en-IN",
+                                  { day: "numeric", month: "short" },
+                                )}
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : isCurrent ? (
+                        <span className="text-accentInk">Here now</span>
+                      ) : (
+                        <span className="text-muted/60">Not reached</span>
+                      )}
+                    </span>
+
+                    {done && (step?.by ?? left?.by) && (
+                      <span className="mt-0.5 text-[10px] text-muted/80">
+                        {step?.by ?? left?.by}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
       </div>
 
       {/* ── The selected step ── */}
