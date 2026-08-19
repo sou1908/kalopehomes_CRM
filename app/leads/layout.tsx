@@ -12,6 +12,7 @@ import { runFollowUpDigest } from "@/lib/digest";
 import type { Presence } from "@/lib/presence-shared";
 import { LeadsSidebar } from "./_components/leads-sidebar";
 import { ThemeToggle } from "@/app/_components/theme-toggle";
+import { UserMenu } from "./_components/user-menu";
 
 export default async function LeadsLayout({
   children,
@@ -84,8 +85,16 @@ export default async function LeadsLayout({
       <main className="min-w-0 flex-1">
         {/* Utility strip. In flow rather than floating over the page, because
             /leads/all and /leads/inbox both put controls in this same corner. */}
-        <div className="flex justify-end px-4 pt-3 sm:px-8">
+        <div className="flex items-center justify-end gap-2 px-4 pt-3 sm:px-8">
           <ThemeToggle />
+          <UserMenu
+            user={{
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              presence: (user.presence as Presence) ?? "offline",
+            }}
+          />
         </div>
         {children}
       </main>

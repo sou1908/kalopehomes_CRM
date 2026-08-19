@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { logoutAction } from "@/app/(auth)/actions";
 import { availableSurfaces, type Role } from "@/lib/roles-shared";
 import {
   formatValue,
@@ -11,10 +10,8 @@ import {
   type LeadStageInfo,
   type LeadSummary,
 } from "@/lib/leads-shared";
-import { initials } from "@/lib/avatar";
 import type { Presence } from "@/lib/presence-shared";
 import { LeadComposer } from "./lead-composer";
-import { PresenceSelect } from "../team/_components/presence-switcher";
 import { Icon, type IconName } from "@/app/_components/icons";
 
 function Logo() {
@@ -338,29 +335,6 @@ export function LeadsSidebar({
         )}
       </nav>
 
-      <div className="border-t border-border px-3 py-3">
-        <div className="mb-2 flex items-center gap-2 px-1">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/20 text-[11px] font-semibold text-accentInk">
-            {initials(user.name)}
-          </span>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-medium">{user.name}</div>
-            <div className="truncate text-xs text-muted">{user.email}</div>
-          </div>
-        </div>
-        <div className="mb-2 flex items-center justify-between gap-2 px-1">
-          <span className="text-[11px] text-muted">Status</span>
-          <PresenceSelect userId={user.id} value={user.presence} />
-        </div>
-        <form action={logoutAction}>
-          <button
-            type="submit"
-            className="w-full rounded-md px-2 py-1.5 text-left text-xs text-muted hover:bg-panel hover:text-text"
-          >
-            Sign out
-          </button>
-        </form>
-        </div>
       </aside>
 
       {/* Collapsed icon rail (desktop only) */}
@@ -450,14 +424,6 @@ export function LeadsSidebar({
           )}
         </nav>
 
-        <div className="flex flex-col items-center gap-1 border-t border-border px-2 py-3">
-          <span
-            title={`${user.name} · ${user.email}`}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/20 text-[11px] font-semibold text-accentInk"
-          >
-            {initials(user.name)}
-          </span>
-        </div>
       </aside>
     </>
   );
