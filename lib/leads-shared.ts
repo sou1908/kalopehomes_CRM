@@ -51,18 +51,6 @@ export type JourneyFieldType =
   /** Tick-list of things to confirm on site. */
   | "checklist";
 
-/** Every field type the UI can render — anything else is stale data. */
-export const KNOWN_FIELD_TYPES: string[] = [
-  "text",
-  "yesno",
-  "date",
-  "datetime",
-  "select",
-  "rows",
-  "sections",
-  "checklist",
-];
-
 /** One column of a `rows` field. */
 export type JourneyColumn = {
   key: string;
@@ -324,16 +312,6 @@ export const DEFAULT_PIPELINES: Array<{
                 narrow: true,
                 options: ["ft", "in", "mm", "m"],
               },
-            ],
-          },
-          {
-            key: "placement",
-            label: "What goes where",
-            type: "rows",
-            hint: "The plan in the customer's words — north wall, tall unit; above sink, wall cabinets.",
-            columns: [
-              { key: "location", label: "Location" },
-              { key: "item", label: "What goes there" },
             ],
           },
           { key: "office_visit", label: "Office visit too?", type: "yesno" },

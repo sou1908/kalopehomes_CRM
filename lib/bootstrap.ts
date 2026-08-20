@@ -17,7 +17,6 @@ import {
   DEFAULT_LEAD_TAGS,
   DEFAULT_PIPELINES,
   parseJourneyFields,
-  KNOWN_FIELD_TYPES,
 } from "./leads-shared";
 
 let bootstrapPromise: Promise<void> | null = null;
@@ -239,25 +238,15 @@ export function ensureAdminUser(): Promise<void> {
         );
         if (!st?.fields?.length) continue;
 
-        const current = parseJourneyFields(row.fields);
-
-        // Empty: fill it in.
-        let refresh = current.length === 0;
-
-        // Drifted: a key the seed defines is stored with a different type, or
-        // a type that no longer exists. That's a shape the UI can no longer
-        // render, so it's repaired rather than left broken.
+        // Seeded stages track the seed exactly, because nothing else can edit
+        // them yet — that covers a question being added, removed or reshaped
+        // without a migration per change.
         //
-        // Deliberately narrow — it never touches fields someone added or
-        // removed, only ones whose definition has changed underneath them.
-        // Revisit when the field editor ships and stages become user-owned.
-        if (!refresh) {
-          refresh = current.some((f) => {
-            if (!KNOWN_FIELD_TYPES.includes(f.type)) return true;
-            const seeded = st.fields!.find((x) => x.key === f.key);
-            return seeded != null && seeded.type !== f.type;
-          });
-        }
+        // This MUST become a one-time sync when the field editor ships, or it
+        // will overwrite whatever anyone configures on every boot.
+        const current = parseJourneyFields(row.fields);
+        const refresh =
+          JSON.stringify(current) !== JSON.stringify(st.fields);
 
         if (!refresh) continue;
         await db
