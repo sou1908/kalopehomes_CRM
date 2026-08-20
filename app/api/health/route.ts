@@ -38,6 +38,37 @@ function describe(err: unknown): { code: string; hint: string } {
   return { code, hint: EXPLANATIONS[code] ?? "See the server log for the full error." };
 }
 
+/**
+ * Structural facts about the credentials, for when the server rejects them.
+ *
+ * Shapes only — never a username, a password, or a hostname. On shared hosting
+ * the account prefix (u550926335_) belongs on BOTH the database and the user,
+ * and leaving it off one of them is the usual cause of an access-denied. So is
+ * a stray space picked up when pasting a password.
+ */
+function credentialShape() {
+  const user = process.env.MYSQL_USER ?? "";
+  const database = process.env.MYSQL_DATABASE ?? "";
+  const password = process.env.MYSQL_PASSWORD ?? "";
+  const host = process.env.MYSQL_HOST ?? "";
+  const prefix = (s: string) => /^(u\d+_)/.exec(s)?.[1] ?? null;
+
+  return {
+    userIsPrefixed: prefix(user) !== null,
+    databaseIsPrefixed: prefix(database) !== null,
+    // Both must carry the SAME account prefix.
+    prefixesMatch: prefix(user) !== null && prefix(user) === prefix(database),
+    passwordLength: password.length,
+    // A pasted value that kept a leading or trailing space fails every time,
+    // and looks completely correct in a masked field.
+    passwordHasEdgeSpace: password !== password.trim(),
+    userHasEdgeSpace: user !== user.trim(),
+    databaseHasEdgeSpace: database !== database.trim(),
+    hostIsLocal: host === "localhost" || host === "127.0.0.1",
+    usingDatabaseUrl: Boolean(process.env.DATABASE_URL),
+  };
+}
+
 export async function GET() {
   // 1. Is it configured at all? Names only — never the values.
   const configured = Boolean(
@@ -64,7 +95,10 @@ export async function GET() {
     await db.execute(sql`SELECT 1`);
   } catch (err) {
     console.error("[health] connect failed:", err);
-    return NextResponse.json({ ok: false, step: "connect", ...describe(err) }, { status: 503 });
+    return NextResponse.json(
+      { ok: false, step: "connect", ...describe(err), checks: credentialShape() },
+      { status: 503 },
+    );
   }
 
   // 3. Do the tables exist / can we create them?
