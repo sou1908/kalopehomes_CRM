@@ -8,5 +8,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/files).*)"],
+  // api/files is no longer excluded: it authenticates like everything else,
+  // and skipping it here made it look deliberately unguarded.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

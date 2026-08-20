@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { requireRole } from "@/lib/auth";
+import { LEAD_SURFACE_ROLES } from "@/lib/roles";
 
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR ?? "./uploads");
 
@@ -23,6 +25,15 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> },
 ) {
+  // Uploads are customer material — site photos, addresses, attachments. The
+  // filenames are random, but a random name is obscurity, not access control:
+  // URLs leak through history, referrers and forwarded links.
+  try {
+    await requireRole([...LEAD_SURFACE_ROLES]);
+  } catch {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
   const { path: parts } = await params;
   const rel = parts.join("/");
   const fullPath = path.resolve(UPLOAD_DIR, rel);
