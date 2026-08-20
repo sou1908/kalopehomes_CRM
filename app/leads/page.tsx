@@ -158,7 +158,11 @@ export default async function LeadsHomePage({
           </p>
         </div>
       ) : (
-        <div className="no-scrollbar mt-4 flex gap-4 overflow-x-auto pb-4">
+        <div className="mt-4 flex gap-4 overflow-x-auto pb-3">
+          {/* The scrollbar stays visible here. Hiding it was fine at four
+              columns; at seven the last ones sit off-screen with nothing to
+              say they exist, and a board you cannot tell scrolls reads as a
+              board that is missing stages. */}
           {stages.map((stage) => {
             const cards = byStage.get(stage.id) ?? [];
             const stageValue = cards.reduce(
