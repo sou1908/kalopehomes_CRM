@@ -21,15 +21,21 @@ export type LeadStageInfo = {
   fields?: string | null;
 };
 
-/** The questions a stage asks, falling back to its pipeline's legacy set. */
+/**
+ * The questions a stage asks.
+ *
+ * A stage that asks nothing asks nothing — several deliberately do, like the
+ * exit stage, where the job is to hand over what's already recorded rather than
+ * collect more. Falling back to the pipeline's old form there put stale
+ * questions ("Site visited?") on a stage well past them.
+ *
+ * The fallback survives only for a lead with no stage at all.
+ */
 export function fieldsForStage(
   stage: { name: string; fields?: string | null } | null,
   pipelineName: string,
 ): JourneyField[] {
-  const own = parseJourneyFields(stage?.fields);
-  if (own.length > 0) return own;
-  // Pipelines defined their questions before stages did; keep reading those so
-  // an org that hasn't been re-seeded still shows something sensible.
+  if (stage) return parseJourneyFields(stage.fields);
   return journeyFormFor(pipelineName);
 }
 

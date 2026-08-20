@@ -17,6 +17,7 @@ import {
   fieldsForStage,
   scheduleFieldOf,
   formatJourneyValue,
+  describeJourneyValue,
   telHref,
 } from "@/lib/leads-shared";
 import { listAssignableMembers } from "@/lib/members";
@@ -130,6 +131,23 @@ export default async function LeadDetailPage({
   // (workableIds below), not to reading what an earlier team recorded.
   const fullJourney = parseJourney(lead.journey);
   const journey = fullJourney;
+
+  // Everything this pipeline has recorded, for a stage that asks nothing of its
+  // own — the exit stage hands over what's already there, so it should be in
+  // front of whoever is doing the handing.
+  const handoverRecap = (() => {
+    if (!lead.pipelineId) return [];
+    const captured = fullJourney[lead.pipelineId]?.fields ?? {};
+    if (Object.keys(captured).length === 0) return [];
+    return stages
+      .flatMap((st) => fieldsForStage(st, leadPipeline?.name ?? ""))
+      .filter((f, i, all) => all.findIndex((x) => x.key === f.key) === i)
+      .map((f) => {
+        const said = describeJourneyValue(f, captured[f.key] ?? "");
+        return said ? { label: f.label, value: said } : null;
+      })
+      .filter((x): x is { label: string; value: string } => x !== null);
+  })();
 
   // The appointment the current stage asked for — a booked visit or revisit —
   // so the header says what is coming, not just when something is due.
@@ -315,6 +333,7 @@ export default async function LeadDetailPage({
               values={
                 lead.pipelineId ? (fullJourney[lead.pipelineId]?.fields ?? {}) : {}
               }
+              recap={handoverRecap}
             />
           )}
           <div className="mt-3">

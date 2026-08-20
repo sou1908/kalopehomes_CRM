@@ -31,6 +31,7 @@ export function ActivityComposer({
   stageName,
   fields = [],
   values = {},
+  recap = [],
 }: {
   leadId: string;
   /** The stage the lead is in, for the heading above its questions. */
@@ -39,6 +40,12 @@ export function ActivityComposer({
   fields?: JourneyField[];
   /** Anything already captured, so the boxes open filled in. */
   values?: Record<string, string>;
+  /**
+   * Everything this pipeline has recorded so far. Shown when the stage asks
+   * nothing of its own — the exit stage's job is handing over what's already
+   * there, and it should be in front of you while you do it.
+   */
+  recap?: Array<{ label: string; value: string }>;
 }) {
   const [state, action, pending] = useActionState(addActivityAction, undefined);
   const [kind, setKind] = useState("note");
@@ -108,6 +115,24 @@ export function ActivityComposer({
         }
         className="input text-sm"
       />
+      {/* What's being handed on. Read-only: this is the recap, and the place to
+          change any of it is the stage that recorded it. */}
+      {fields.length === 0 && recap.length > 0 && (
+        <div className="space-y-1.5 rounded-lg border border-border bg-panel/40 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+            {stageName ? `${stageName} — recorded so far` : "Recorded so far"}
+          </p>
+          <dl className="space-y-1 text-xs">
+            {recap.map((r) => (
+              <div key={r.label} className="flex gap-2">
+                <dt className="shrink-0 text-muted">{r.label}:</dt>
+                <dd className="min-w-0 break-words text-text">{r.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+
       {/* The current stage's questions. Hidden entirely for stages that ask
           nothing, so the composer stays a composer. */}
       {fields.length > 0 && (
