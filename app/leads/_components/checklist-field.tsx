@@ -32,10 +32,12 @@ const LABELS: Record<CheckStatus, string> = {
   pending: "Pending",
 };
 
+/** The select carries its own answer's colour, so the state reads at a glance
+ *  down a column of eight without opening anything. */
 const TONE: Record<CheckStatus, string> = {
-  yes: "bg-success/15 text-success border-success/40",
-  no: "bg-danger/15 text-danger border-danger/40",
-  pending: "bg-marigold/15 text-marigold border-marigold/40",
+  yes: "bg-success/10 text-success border-success/40",
+  no: "bg-danger/10 text-danger border-danger/40",
+  pending: "bg-panel text-muted border-border",
 };
 
 export function ChecklistField({
@@ -98,30 +100,21 @@ export function ChecklistField({
                   {item}
                 </span>
 
-                <div
-                  role="radiogroup"
-                  aria-label={item}
-                  className="flex shrink-0 items-center gap-1"
-                >
-                  {CHECK_STATUSES.map((st) => {
-                    const on = status === st;
-                    return (
-                      <button
-                        key={st}
-                        type="button"
-                        role="radio"
-                        aria-checked={on}
-                        onClick={() => set(item, { status: st })}
-                        className={`rounded-full border px-2.5 py-0.5 text-[11px] transition-colors ${
-                          on
-                            ? TONE[st]
-                            : "border-border text-muted hover:border-accent/40 hover:text-text"
-                        }`}
-                      >
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <select
+                    value={status}
+                    onChange={(e2) =>
+                      set(item, { status: e2.target.value as CheckStatus })
+                    }
+                    aria-label={item}
+                    className={`rounded-md border px-2 py-1 text-[12px] transition-colors ${TONE[status]}`}
+                  >
+                    {CHECK_STATUSES.map((st) => (
+                      <option key={st} value={st}>
                         {LABELS[st]}
-                      </button>
-                    );
-                  })}
+                      </option>
+                    ))}
+                  </select>
 
                   {!showNote && (
                     <button
