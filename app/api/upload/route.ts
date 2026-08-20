@@ -16,12 +16,34 @@ export async function POST(req: NextRequest) {
   if (!(file instanceof File) || file.size === 0) {
     return NextResponse.json({ error: "No file" }, { status: 400 });
   }
-  if (file.size > 25 * 1024 * 1024) {
-    return NextResponse.json({ error: "File must be under 25 MB" }, { status: 400 });
+  // Video needs far more room than a pasted screenshot: a phone walkthrough of
+  // a kitchen runs well past 25 MB, and refusing it would push agents back to
+  // WhatsApp, where the CRM never sees it.
+  const isVideo = file.type.startsWith("video/");
+  const limitMb = isVideo ? 200 : 25;
+  if (file.size > limitMb * 1024 * 1024) {
+    return NextResponse.json(
+      { error: `File must be under ${limitMb} MB` },
+      { status: 400 },
+    );
   }
 
-  // Images (editor) keep their own folder; everything else (to-do attachments) too.
-  const subdir = file.type.startsWith("image/") ? "editor-images" : "todo-files";
+  // Site captures get their own folder — they're evidence, and worth being able
+  // to find and back up separately from pasted editor images.
+  const subdir =
+    form.get("purpose") === "site"
+      ? "site-visits"
+      : file.type.startsWith("image/")
+        ? "editor-images"
+        : "todo-files";
   const stored = await saveUpload(file, subdir);
-  return NextResponse.json({ url: `/api/files/${stored.storedPath}`, name: file.name });
+  return NextResponse.json({
+    url: `/api/files/${stored.storedPath}`,
+    name: file.name,
+    kind: stored.mimeType.startsWith("video/")
+      ? "video"
+      : stored.mimeType.startsWith("image/")
+        ? "image"
+        : "file",
+  });
 }

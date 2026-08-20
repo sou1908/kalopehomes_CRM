@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { addActivityAction } from "../actions";
 import { CALL_OUTCOMES, type JourneyField } from "@/lib/leads-shared";
 import { DateTimeField } from "./date-time-field";
+import { RowsField } from "./rows-field";
+import { FilesField } from "./files-field";
 
 const KINDS: { value: string; label: string }[] = [
   { value: "note", label: "📝 Note" },
@@ -138,6 +140,32 @@ export function ActivityComposer({
 /** One stage question inside the composer. */
 function StageField({ field, value }: { field: JourneyField; value: string }) {
   const id = `f_${field.key}`;
+
+  // Rows and files carry their own controls, and neither is a single input, so
+  // they can't sit inside a <label> without the click target being wrong.
+  if (field.type === "rows" || field.type === "files") {
+    return (
+      <div>
+        <span className="mb-1 block text-[11px] uppercase tracking-wide text-muted">
+          {field.label}
+        </span>
+        {field.type === "rows" ? (
+          <RowsField
+            name={id}
+            columns={field.columns ?? []}
+            defaultValue={value}
+            addLabel={`Add ${field.label.toLowerCase()}`}
+          />
+        ) : (
+          <FilesField name={id} defaultValue={value} />
+        )}
+        {field.hint && (
+          <p className="mt-1.5 text-[11px] leading-relaxed text-muted">{field.hint}</p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <label className="block">
       <span className="mb-1 block text-[11px] uppercase tracking-wide text-muted">

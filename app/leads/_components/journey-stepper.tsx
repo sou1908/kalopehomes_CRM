@@ -4,6 +4,11 @@ import { useState } from "react";
 import {
   fieldsForStage,
   formatJourneyValue,
+  parseJourneyRows,
+  parseJourneyFiles,
+  type JourneyColumn,
+  type JourneyRow,
+  type JourneyFile,
   type PipelineInfo,
   type LeadStageInfo,
   type JourneyData,
@@ -313,18 +318,92 @@ function Summary({
   fields: JourneyField[];
   values: Record<string, string>;
 }) {
-  const filled = fields.filter((f) => (values[f.key] ?? "").trim() !== "");
+  // A rows or files answer is JSON, so "[]" is as empty as "".
+  const filled = fields.filter((f) => {
+    const v = (values[f.key] ?? "").trim();
+    if (v === "" || v === "[]") return false;
+    return true;
+  });
   if (filled.length === 0) return null;
+
   return (
-    <dl className="space-y-1 rounded-lg border border-border bg-panel/30 p-3 text-xs">
+    <dl className="space-y-2.5 rounded-lg border border-border bg-panel/30 p-3 text-xs">
       {filled.map((f) => (
-        <div key={f.key} className="flex gap-2">
-          <dt className="shrink-0 text-muted">{f.label}:</dt>
+        <div key={f.key} className={f.type === "rows" || f.type === "files" ? "" : "flex gap-2"}>
+          <dt className={f.type === "rows" || f.type === "files" ? "mb-1 text-muted" : "shrink-0 text-muted"}>
+            {f.label}:
+          </dt>
           <dd className="min-w-0 break-words text-text">
-            {formatJourneyValue(values[f.key], f.type)}
+            {f.type === "rows" ? (
+              <RowsSummary columns={f.columns ?? []} rows={parseJourneyRows(values[f.key])} />
+            ) : f.type === "files" ? (
+              <FilesSummary files={parseJourneyFiles(values[f.key])} />
+            ) : (
+              formatJourneyValue(values[f.key], f.type)
+            )}
           </dd>
         </div>
       ))}
     </dl>
+  );
+}
+
+/** Captured rows, read back as the table they were entered as. */
+function RowsSummary({
+  columns,
+  rows,
+}: {
+  columns: JourneyColumn[];
+  rows: JourneyRow[];
+}) {
+  if (rows.length === 0) return null;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[18rem] text-left text-[11px]">
+        <thead>
+          <tr className="text-muted">
+            {columns.map((c) => (
+              <th key={c.key} className="pb-1 pr-3 font-mono text-[9px] uppercase tracking-[0.1em]">
+                {c.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-t border-border/60">
+              {columns.map((c) => (
+                <td key={c.key} className="py-1 pr-3 align-top">
+                  {r[c.key] || "—"}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Captured photos and video, as thumbnails that open full size. */
+function FilesSummary({ files }: { files: JourneyFile[] }) {
+  if (files.length === 0) return null;
+  return (
+    <ul className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+      {files.map((f) => (
+        <li key={f.url} className="overflow-hidden rounded border border-border bg-panel">
+          <a href={f.url} target="_blank" rel="noreferrer" title={f.name}>
+            {f.kind === "image" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={f.url} alt={f.name} className="h-14 w-full object-cover" loading="lazy" />
+            ) : (
+              <span className="flex h-14 w-full items-center justify-center text-[9px] text-muted">
+                {f.kind === "video" ? "Video" : "File"}
+              </span>
+            )}
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }

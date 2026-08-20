@@ -43,13 +43,59 @@ export type JourneyFieldType =
   | "yesno"
   | "date"
   | "datetime"
-  | "select";
+  | "select"
+  /** A repeatable table — measurements, what goes where. */
+  | "rows"
+  /** Photos and video captured on site. */
+  | "files";
+
+/** One column of a `rows` field. */
+export type JourneyColumn = {
+  key: string;
+  label: string;
+  /** Renders a dropdown instead of a text box. */
+  options?: string[];
+  /** Narrow columns (a width, a unit) don't need the same room as a name. */
+  narrow?: boolean;
+};
+
 export type JourneyField = {
   key: string;
   label: string;
   type: JourneyFieldType;
   options?: string[];
+  /** For `rows`: what each row records. */
+  columns?: JourneyColumn[];
+  /** Shown under the field — say what good input looks like. */
+  hint?: string;
 };
+
+/** One row of a `rows` field: column key → value. */
+export type JourneyRow = Record<string, string>;
+
+/** Parses a `rows` value, which is stored as JSON in the answer string. */
+export function parseJourneyRows(raw: string | null | undefined): JourneyRow[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? (v as JourneyRow[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** One uploaded file on a `files` field. */
+export type JourneyFile = { url: string; name: string; kind: string };
+
+export function parseJourneyFiles(raw: string | null | undefined): JourneyFile[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? (v as JourneyFile[]) : [];
+  } catch {
+    return [];
+  }
+}
 
 // Default fields per pipeline, matched by pipeline name (lower-cased). Unknown pipelines
 // fall back to a single Notes field. Make these configurable later if kept.
@@ -207,6 +253,40 @@ export const DEFAULT_PIPELINES: Array<{
         position: 20,
         probability: 70,
         fields: [
+          {
+            key: "photos",
+            label: "Photos & video from the site",
+            type: "files",
+            hint: "What the room looks like now — the quotation gets built from these.",
+          },
+          {
+            key: "measurements",
+            label: "Measurements",
+            type: "rows",
+            hint: "One row per area. Kept as numbers so a quotation can be worked out from them.",
+            columns: [
+              { key: "area", label: "Area" },
+              { key: "width", label: "Width", narrow: true },
+              { key: "height", label: "Height", narrow: true },
+              { key: "depth", label: "Depth", narrow: true },
+              {
+                key: "unit",
+                label: "Unit",
+                narrow: true,
+                options: ["ft", "in", "mm", "m"],
+              },
+            ],
+          },
+          {
+            key: "placement",
+            label: "What goes where",
+            type: "rows",
+            hint: "The plan in the customer's words — north wall, tall unit; above sink, wall cabinets.",
+            columns: [
+              { key: "location", label: "Location" },
+              { key: "item", label: "What goes there" },
+            ],
+          },
           { key: "office_visit", label: "Office visit too?", type: "yesno" },
           { key: "office_at", label: "Office visit date & time", type: "datetime" },
           { key: "visit_outcome", label: "How did it go?", type: "text" },
