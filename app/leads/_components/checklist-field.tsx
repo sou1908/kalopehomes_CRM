@@ -1,17 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { parseJourneyChecks } from "@/lib/leads-shared";
+import { parseJourneyChecks, type JourneyCheck } from "@/lib/leads-shared";
+import { Icon } from "@/app/_components/icons";
 
 /**
- * A tick-list for a stage — what was done on site.
+ * A tick-list for a stage — what was done on site, and anything worth saying
+ * about it.
  *
- * Stored as the list of ticked labels rather than a true/false per item, so
- * adding or renaming an item later doesn't strand a pile of stale keys. The
- * cost is that renaming an item loses its ticks, which is the right trade for
- * a checklist that changes as the business learns what to check.
+ * A remark is allowed on any item, ticked or not. "Not done, meter box was
+ * locked" tells the office more than an empty box does, and it's the reason
+ * they'd otherwise have to ring the agent to find out.
  *
- * Submits `name` as a JSON array of the ticked labels.
+ * Stored keyed by the item's own label rather than an index or generated id, so
+ * reordering the list doesn't scramble what was recorded. Renaming an item does
+ * lose its entry — the right trade for a checklist that changes as the business
+ * learns what to check.
+ *
+ * Submits `name` as JSON: [{ item, checked, note? }], skipping items that are
+ * neither ticked nor annotated.
  */
 export function ChecklistField({
   name,
@@ -22,44 +29,99 @@ export function ChecklistField({
   items: string[];
   defaultValue: string;
 }) {
-  const [checked, setChecked] = useState<string[]>(() =>
+  const [state, setState] = useState<JourneyCheck[]>(() =>
     parseJourneyChecks(defaultValue),
   );
+  // Which rows are showing their remark box — a remark already written keeps
+  // its box open on its own.
+  const [open, setOpen] = useState<string[]>([]);
 
-  const toggle = (item: string) =>
-    setChecked((c) => (c.includes(item) ? c.filter((x) => x !== item) : [...c, item]));
+  const entry = (item: string) => state.find((s) => s.item === item);
+
+  const set = (item: string, patch: Partial<JourneyCheck>) =>
+    setState((s) => {
+      const found = s.find((x) => x.item === item);
+      const next: JourneyCheck = {
+        item,
+        checked: found?.checked ?? false,
+        note: found?.note,
+        ...patch,
+      };
+      const rest = s.filter((x) => x.item !== item);
+      return [...rest, next];
+    });
 
   if (items.length === 0) return null;
 
+  // Only rows that say something are worth storing.
+  const stored = state.filter(
+    (s) => s.checked || (s.note != null && s.note.trim() !== ""),
+  );
+  const doneCount = stored.filter((s) => s.checked).length;
+
   return (
     <div>
-      <input type="hidden" name={name} value={JSON.stringify(checked)} />
+      <input type="hidden" name={name} value={JSON.stringify(stored)} />
 
       <ul className="grid gap-1 sm:grid-cols-2">
         {items.map((item) => {
-          const on = checked.includes(item);
+          const e = entry(item);
+          const on = e?.checked ?? false;
+          const note = e?.note ?? "";
+          const showNote = note !== "" || open.includes(item);
+
           return (
-            <li key={item}>
-              <label
-                className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors ${
-                  on ? "bg-success/10 text-text" : "text-muted hover:bg-elevated"
-                }`}
-              >
+            <li
+              key={item}
+              className={`rounded-md px-2 py-1.5 transition-colors ${
+                on ? "bg-success/10" : "hover:bg-elevated"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <label
+                  className={`flex flex-1 cursor-pointer items-center gap-2 text-[13px] ${
+                    on ? "text-text" : "text-muted"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() => set(item, { checked: !on })}
+                    className="accent-accent"
+                  />
+                  {item}
+                </label>
+
+                {!showNote && (
+                  <button
+                    type="button"
+                    onClick={() => setOpen((o) => [...o, item])}
+                    title={`Add a remark about "${item}"`}
+                    aria-label={`Add a remark about ${item}`}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted/60 transition-colors hover:bg-elevated hover:text-text"
+                  >
+                    <Icon name="plus" size={12} />
+                  </button>
+                )}
+              </div>
+
+              {showNote && (
                 <input
-                  type="checkbox"
-                  checked={on}
-                  onChange={() => toggle(item)}
-                  className="accent-accent"
+                  value={note}
+                  onChange={(e2) => set(item, { note: e2.target.value })}
+                  placeholder="Remark (optional)"
+                  aria-label={`Remark about ${item}`}
+                  autoFocus={note === ""}
+                  className="input mt-1.5 px-2 py-1 text-[12px]"
                 />
-                {item}
-              </label>
+              )}
             </li>
           );
         })}
       </ul>
 
       <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-        {checked.length} of {items.length} done
+        {doneCount} of {items.length} done
       </p>
     </div>
   );

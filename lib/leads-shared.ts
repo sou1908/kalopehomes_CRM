@@ -103,12 +103,34 @@ export function parseJourneySections(
   }
 }
 
-/** Ticked items of a `checklist` field, stored as a JSON array of labels. */
-export function parseJourneyChecks(raw: string | null | undefined): string[] {
+/**
+ * One checklist item's state. A remark is allowed whether or not the item is
+ * ticked — "not done, customer wasn't home" is the more useful of the two.
+ */
+export type JourneyCheck = { item: string; checked: boolean; note?: string };
+
+/**
+ * Reads a checklist value. Tolerates the original shape — a plain array of
+ * ticked labels — so anything recorded before remarks existed still loads.
+ */
+export function parseJourneyChecks(raw: string | null | undefined): JourneyCheck[] {
   if (!raw) return [];
   try {
     const v = JSON.parse(raw);
-    return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
+    if (!Array.isArray(v)) return [];
+    return v
+      .map((x): JourneyCheck | null => {
+        if (typeof x === "string") return { item: x, checked: true };
+        if (x && typeof x.item === "string") {
+          return {
+            item: x.item,
+            checked: Boolean(x.checked),
+            note: typeof x.note === "string" && x.note.trim() !== "" ? x.note : undefined,
+          };
+        }
+        return null;
+      })
+      .filter((x): x is JourneyCheck => x !== null);
   } catch {
     return [];
   }
@@ -278,6 +300,7 @@ export const DEFAULT_PIPELINES: Array<{
             options: [
               "All areas measured",
               "Photos taken",
+              "Video taken",
               "Electrical points noted",
               "Plumbing points noted",
               "Budget discussed",

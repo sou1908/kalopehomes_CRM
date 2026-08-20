@@ -10,6 +10,7 @@ import {
   type JourneyColumn,
   type JourneyRow,
   type JourneySection,
+  type JourneyCheck,
   type PipelineInfo,
   type LeadStageInfo,
   type JourneyData,
@@ -348,7 +349,7 @@ function Summary({
             ) : f.type === "checklist" ? (
               <ChecklistSummary
                 items={f.options ?? []}
-                checked={parseJourneyChecks(values[f.key])}
+                checks={parseJourneyChecks(values[f.key])}
               />
             ) : (
               formatJourneyValue(values[f.key], f.type)
@@ -427,20 +428,35 @@ function SectionsSummary({
 /** What was ticked on site — and, more usefully, what wasn't. */
 function ChecklistSummary({
   items,
-  checked,
+  checks,
 }: {
   items: string[];
-  checked: string[];
+  checks: JourneyCheck[];
 }) {
   if (items.length === 0) return null;
-  const missed = items.filter((i) => !checked.includes(i));
+  const done = checks.filter((c) => c.checked).map((c) => c.item);
+  const missed = items.filter((i) => !done.includes(i));
+  const remarks = checks.filter((c) => c.note && c.note.trim() !== "");
+
   return (
     <div>
       <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-        {checked.length} of {items.length} done
+        {done.length} of {items.length} done
       </p>
       {missed.length > 0 && (
         <p className="mt-1 text-[11px] text-marigold">Not done: {missed.join(", ")}</p>
+      )}
+      {remarks.length > 0 && (
+        <ul className="mt-1.5 space-y-0.5">
+          {remarks.map((r) => (
+            <li key={r.item} className="text-[11px]">
+              <span className={r.checked ? "text-muted" : "text-marigold"}>
+                {r.item}:
+              </span>{" "}
+              <span className="text-text">{r.note}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
