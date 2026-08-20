@@ -78,10 +78,14 @@ export default async function LeadsHomePage({
   }
 
   return (
-    // A column of full height, so the board below can absorb what's left and
-    // its scrollbar lands at the bottom of the window rather than tucked under
-    // the cards. The 4rem is the utility strip above — the only fixed part.
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col px-4 pb-3 pt-3 sm:px-8">
+    // Capped to the window rather than growing with the tallest column, so the
+    // board's horizontal scrollbar stays in view instead of sinking below a
+    // full column — you shouldn't have to scroll down to scroll sideways.
+    // Columns scroll their own cards instead. The 4rem is the utility strip.
+    //
+    // Only from lg up: on a phone the page scrolls normally, which is the
+    // right behaviour when one column fills the screen anyway.
+    <div className="flex flex-col px-4 pb-3 pt-3 sm:px-8 lg:h-[calc(100vh-4rem)] lg:overflow-hidden">
       <div className="mb-7 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
@@ -161,7 +165,7 @@ export default async function LeadsHomePage({
           </p>
         </div>
       ) : (
-        <div className="mt-4 flex min-h-0 flex-1 gap-4 overflow-x-auto pb-2">
+        <div className="mt-4 flex gap-4 overflow-x-auto pb-2 lg:min-h-0 lg:flex-1">
           {/* The scrollbar stays visible here. Hiding it was fine at four
               columns; at seven the last ones sit off-screen with nothing to
               say they exist, and a board you cannot tell scrolls reads as a
@@ -175,7 +179,7 @@ export default async function LeadsHomePage({
             return (
               <section
                 key={stage.id}
-                className="flex w-[80vw] max-w-[18rem] shrink-0 flex-col sm:w-72"
+                className="flex w-[80vw] max-w-[18rem] shrink-0 flex-col sm:w-72 lg:min-h-0"
               >
                 {/* Ruled column head: the stage's own colour carries the
                     identification, so no dot is needed beside the name. */}
@@ -196,7 +200,9 @@ export default async function LeadsHomePage({
                     </span>
                   )}
                 </div>
-                <div className="flex flex-col gap-2">
+                {/* The cards scroll, not the board — that's what keeps the
+                    horizontal bar pinned in view. */}
+                <div className="flex flex-col gap-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
                   {cards.map((lead) => (
                     <LeadCard
                       key={lead.id}
