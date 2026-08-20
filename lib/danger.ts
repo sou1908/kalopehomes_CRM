@@ -2,8 +2,8 @@ import "server-only";
 import fs from "node:fs";
 import path from "node:path";
 import { eq } from "drizzle-orm";
-import { db, sqlite } from "./db";
-import { leads } from "./db/schema";
+import { db } from "./db";
+import { leads, leadActivities } from "./db/schema";
 
 /**
  * ⚠️ TEMPORARY — BUILT FOR TESTING, REMOVE BEFORE THE SITE GOES LIVE.
@@ -16,18 +16,31 @@ import { leads } from "./db/schema";
  * bottom of app/leads/all/page.tsx. Nothing else depends on it.
  */
 
-/** Snapshot the database first, so an accidental wipe is recoverable. */
-function snapshot(): string {
+/**
+ * Write the rows to a JSON file before deleting them, so an accidental wipe is
+ * recoverable.
+ *
+ * Under SQLite this used `VACUUM INTO`, which copied the whole database file.
+ * MySQL has no equivalent that a web process can call, and shelling out to
+ * mysqldump would depend on a binary the host may not have. Exporting the rows
+ * we are about to destroy is both portable and enough: nothing else is touched.
+ */
+async function snapshot(orgId: string): Promise<string> {
+  const rows = await db.select().from(leads).where(eq(leads.orgId, orgId));
+  const activity = await db
+    .select()
+    .from(leadActivities)
+    .where(eq(leadActivities.orgId, orgId));
+
   const dir = path.join(process.cwd(), "data", "backups");
-  fs.mkdirSync(dir, { recursive: true });
-  const stamp = new Date()
-    .toISOString()
-    .replace(/[:.]/g, "-")
-    .slice(0, 19);
-  const file = path.join(dir, `before-wipe-${stamp}.db`);
-  // better-sqlite3's own backup — safe against a live connection, unlike a
-  // plain file copy, which would miss anything still sitting in the WAL.
-  sqlite.prepare("VACUUM INTO ?").run(file);
+  await fs.promises.mkdir(dir, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const file = path.join(dir, `before-wipe-${stamp}.json`);
+  await fs.promises.writeFile(
+    file,
+    JSON.stringify({ savedAt: new Date().toISOString(), orgId, leads: rows, activity }, null, 2),
+    "utf8",
+  );
   return file;
 }
 
@@ -39,7 +52,7 @@ export async function deleteAllLeads(
     .from(leads)
     .where(eq(leads.orgId, orgId));
 
-  const backup = snapshot();
+  const backup = await snapshot(orgId);
   await db.delete(leads).where(eq(leads.orgId, orgId));
 
   return { deleted: before.length, backup };

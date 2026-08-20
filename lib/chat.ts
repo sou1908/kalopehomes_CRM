@@ -139,10 +139,9 @@ export async function markDmRead(userId: string, peerId: string): Promise<void> 
   await db
     .insert(dmReads)
     .values({ userId, peerUserId: peerId, lastReadAt: now })
-    .onConflictDoUpdate({
-      target: [dmReads.userId, dmReads.peerUserId],
-      set: { lastReadAt: now },
-    });
+    // MySQL's spelling of upsert. It keys off the primary key
+    // (user_id, peer_user_id) rather than naming the columns.
+    .onDuplicateKeyUpdate({ set: { lastReadAt: now } });
 }
 
 /**

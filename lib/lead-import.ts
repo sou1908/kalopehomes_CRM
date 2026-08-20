@@ -361,8 +361,9 @@ export type ImportResult = {
  * anything the browser sends back, so what gets written is always validated
  * against the current stage list and the current contents of the CRM.
  *
- * Not a single transaction: better-sqlite3 transactions are synchronous and
- * createLead is async (it also writes an activity row per lead). Rows are
+ * Not a single transaction: createLead is async and writes an activity row per
+ * lead, so wrapping the batch would hold one connection for the whole import
+ * and roll back 400 good rows for one bad one. Rows are
  * therefore independent — a failure part-way leaves the earlier leads in place,
  * and the caller is told exactly which lines didn't make it.
  */
