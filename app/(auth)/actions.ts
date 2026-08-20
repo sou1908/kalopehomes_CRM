@@ -8,6 +8,7 @@ import { createSession, destroySession, verifyPassword, getCurrentUser } from "@
 import { ensureAdminUser } from "@/lib/bootstrap";
 import { getUserRoles, defaultSurface } from "@/lib/roles";
 import { setPresence } from "@/lib/presence";
+import { checkRateLimit, recordFailure, clearRateLimit } from "@/lib/rate-limit";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -20,19 +21,37 @@ export async function loginAction(
   const password = String(formData.get("password") ?? "");
   if (!email || !password) return { error: "Email and password are required." };
 
+  // Counted per address, so one account being attacked can't lock out the rest
+  // of the office — and so a wrong password five times in a row costs a wait
+  // rather than opening the account to unlimited guessing.
+  const limit = checkRateLimit(`login:${email}`);
+  if (!limit.allowed) {
+    return {
+      error: `Too many failed attempts. Try again in ${limit.retryAfterMinutes} minute${
+        limit.retryAfterMinutes === 1 ? "" : "s"
+      }.`,
+    };
+  }
+
   const row = await db
     .select()
     .from(users)
     .where(eq(users.email, email))
     .limit(1);
-  if (row.length === 0) return { error: "Invalid email or password." };
+  // Every miss counts the same and says the same thing, whatever went wrong.
+  const fail = (): ActionState => {
+    recordFailure(`login:${email}`);
+    return { error: "Invalid email or password." };
+  };
+
+  if (row.length === 0) return fail();
   // Client accounts use a magic link, not a password — their stored hash is a
   // sentinel, never a real bcrypt hash ($2…). Reject without leaking which is which.
-  if (!row[0].passwordHash.startsWith("$2"))
-    return { error: "Invalid email or password." };
+  if (!row[0].passwordHash.startsWith("$2")) return fail();
   const ok = await verifyPassword(password, row[0].passwordHash);
-  if (!ok) return { error: "Invalid email or password." };
+  if (!ok) return fail();
 
+  clearRateLimit(`login:${email}`);
   await createSession(row[0].id);
   // Signing in marks the caller available to the team.
   await setPresence(row[0].id, "available");
