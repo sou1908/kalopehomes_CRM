@@ -245,13 +245,15 @@ export function LeadsSidebar({
               <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
                 Pipelines
               </span>
-              <Link
-                href="/leads/pipelines"
-                className="text-muted transition-colors hover:text-accentInk"
-                title="Manage pipelines"
-              >
-                <Icon name="sliders" size={14} />
-              </Link>
+              {user.roles.includes("admin") && (
+                <Link
+                  href="/leads/pipelines"
+                  className="text-muted transition-colors hover:text-accentInk"
+                  title="Manage pipelines"
+                >
+                  <Icon name="sliders" size={14} />
+                </Link>
+              )}
             </div>
             {pipelines.map((d) => (
               <Link

@@ -5,7 +5,8 @@ import { listPipelines } from "@/lib/pipelines";
 import { PipelineManager, type PipelineRowData } from "../_components/pipeline-manager";
 
 export default async function ManagePipelinesPage() {
-  const user = await requireRole(["telecaller", "site_agent", "admin"]);
+  // Admin-only, matching the actions this page submits to.
+  const user = await requireRole(["admin"]);
   const orgId = user.orgId ?? "";
   const [leads, pipelines] = await Promise.all([
     orgId ? listLeads(orgId) : Promise.resolve([]),

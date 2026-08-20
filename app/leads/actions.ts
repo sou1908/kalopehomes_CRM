@@ -354,13 +354,16 @@ export async function setLeadPipelineAction(formData: FormData) {
   revalidatePath(`/leads/${id}`);
 }
 
+// Structure is admin-only. Renaming a stage or deleting a pipeline reshapes
+// the board for every role at once, and there is no undo — a telecaller
+// tidying up their own view would take everyone else's work with it.
 // ── Pipeline management ───────────────────────────────────────────────────────────
 
 export async function createPipelineAction(
   _prev: LeadFormState,
   formData: FormData,
 ): Promise<LeadFormState> {
-  const user = await requireRole([...LEAD_ROLES]);
+  const user = await requireRole(["admin"]);
   if (!user.orgId) return { error: "No organization." };
   try {
     await createPipeline({
@@ -377,7 +380,7 @@ export async function createPipelineAction(
 }
 
 export async function updatePipelineAction(formData: FormData) {
-  const user = await requireRole([...LEAD_ROLES]);
+  const user = await requireRole(["admin"]);
   if (!user.orgId) return;
   const id = String(formData.get("pipelineId") ?? "");
   try {
@@ -395,7 +398,7 @@ export async function deletePipelineAction(
   _prev: LeadFormState,
   formData: FormData,
 ): Promise<LeadFormState> {
-  const user = await requireRole([...LEAD_ROLES]);
+  const user = await requireRole(["admin"]);
   if (!user.orgId) return { error: "No organization." };
   try {
     await deletePipeline(String(formData.get("pipelineId") ?? ""), user.orgId);
@@ -408,7 +411,7 @@ export async function deletePipelineAction(
 }
 
 export async function movePipelineOrderAction(formData: FormData) {
-  const user = await requireRole([...LEAD_ROLES]);
+  const user = await requireRole(["admin"]);
   if (!user.orgId) return;
   const id = String(formData.get("pipelineId") ?? "");
   const dir = String(formData.get("direction") ?? "") === "down" ? "down" : "up";
@@ -445,6 +448,9 @@ export async function deleteLeadAction(formData: FormData) {
   redirect("/leads");
 }
 
+// Structure is admin-only. Renaming a stage or deleting a pipeline reshapes
+// the board for every role at once, and there is no undo — a telecaller
+// tidying up their own view would take everyone else's work with it.
 // ── Stage management ────────────────────────────────────────────────────────
 
 /** Add a custom pipeline stage. */
@@ -452,7 +458,7 @@ export async function createLeadStageAction(
   _prev: LeadFormState,
   formData: FormData,
 ): Promise<LeadFormState> {
-  const user = await requireRole([...LEAD_ROLES]);
+  const user = await requireRole(["admin"]);
   if (!user.orgId) return { error: "No organization." };
   try {
     await createLeadStage({
@@ -471,7 +477,7 @@ export async function createLeadStageAction(
 
 /** Rename / recolor a stage. */
 export async function updateLeadStageAction(formData: FormData) {
-  const user = await requireRole([...LEAD_ROLES]);
+  const user = await requireRole(["admin"]);
   if (!user.orgId) return;
   const id = String(formData.get("stageId") ?? "");
   try {
@@ -491,7 +497,7 @@ export async function deleteLeadStageAction(
   _prev: LeadFormState,
   formData: FormData,
 ): Promise<LeadFormState> {
-  const user = await requireRole([...LEAD_ROLES]);
+  const user = await requireRole(["admin"]);
   if (!user.orgId) return { error: "No organization." };
   const id = String(formData.get("stageId") ?? "");
   try {
@@ -506,7 +512,7 @@ export async function deleteLeadStageAction(
 
 /** Reorder a stage one slot left (up) or right (down). */
 export async function moveLeadStageOrderAction(formData: FormData) {
-  const user = await requireRole([...LEAD_ROLES]);
+  const user = await requireRole(["admin"]);
   if (!user.orgId) return;
   const id = String(formData.get("stageId") ?? "");
   const dir = String(formData.get("direction") ?? "") === "down" ? "down" : "up";

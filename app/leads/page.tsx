@@ -131,13 +131,15 @@ export default async function LeadsHomePage({
             />
           </div>
           <div className="flex items-center gap-1.5">
-            <Link
-              href="/leads/stages"
-              className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-accent/50 hover:text-text"
-            >
-              <Icon name="sliders" size={14} />
-              Stages
-            </Link>
+            {user.roles.includes("admin") && (
+              <Link
+                href="/leads/stages"
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-accent/50 hover:text-text"
+              >
+                <Icon name="sliders" size={14} />
+                Stages
+              </Link>
+            )}
             <Link
               href="/leads/all"
               className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-accent/50 hover:text-text"
