@@ -5,10 +5,11 @@ import {
   fieldsForStage,
   formatJourneyValue,
   parseJourneyRows,
-  parseJourneyFiles,
+  parseJourneySections,
+  parseJourneyChecks,
   type JourneyColumn,
   type JourneyRow,
-  type JourneyFile,
+  type JourneySection,
   type PipelineInfo,
   type LeadStageInfo,
   type JourneyData,
@@ -311,6 +312,9 @@ function dedupeFields(fields: JourneyField[]): JourneyField[] {
   return fields.filter((f) => (seen.has(f.key) ? false : (seen.add(f.key), true)));
 }
 
+/** Field types that render as a block rather than a value beside its label. */
+const COMPOSITE = ["rows", "sections", "checklist"];
+
 function Summary({
   fields,
   values,
@@ -329,15 +333,23 @@ function Summary({
   return (
     <dl className="space-y-2.5 rounded-lg border border-border bg-panel/30 p-3 text-xs">
       {filled.map((f) => (
-        <div key={f.key} className={f.type === "rows" || f.type === "files" ? "" : "flex gap-2"}>
-          <dt className={f.type === "rows" || f.type === "files" ? "mb-1 text-muted" : "shrink-0 text-muted"}>
+        <div key={f.key} className={COMPOSITE.includes(f.type) ? "" : "flex gap-2"}>
+          <dt className={COMPOSITE.includes(f.type) ? "mb-1 text-muted" : "shrink-0 text-muted"}>
             {f.label}:
           </dt>
           <dd className="min-w-0 break-words text-text">
             {f.type === "rows" ? (
               <RowsSummary columns={f.columns ?? []} rows={parseJourneyRows(values[f.key])} />
-            ) : f.type === "files" ? (
-              <FilesSummary files={parseJourneyFiles(values[f.key])} />
+            ) : f.type === "sections" ? (
+              <SectionsSummary
+                columns={f.columns ?? []}
+                sections={parseJourneySections(values[f.key])}
+              />
+            ) : f.type === "checklist" ? (
+              <ChecklistSummary
+                items={f.options ?? []}
+                checked={parseJourneyChecks(values[f.key])}
+              />
             ) : (
               formatJourneyValue(values[f.key], f.type)
             )}
@@ -385,25 +397,51 @@ function RowsSummary({
   );
 }
 
-/** Captured photos and video, as thumbnails that open full size. */
-function FilesSummary({ files }: { files: JourneyFile[] }) {
-  if (files.length === 0) return null;
+/** Measurements read back area by area. */
+function SectionsSummary({
+  columns,
+  sections,
+}: {
+  columns: JourneyColumn[];
+  sections: JourneySection[];
+}) {
+  if (sections.length === 0) return null;
   return (
-    <ul className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
-      {files.map((f) => (
-        <li key={f.url} className="overflow-hidden rounded border border-border bg-panel">
-          <a href={f.url} target="_blank" rel="noreferrer" title={f.name}>
-            {f.kind === "image" ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={f.url} alt={f.name} className="h-14 w-full object-cover" loading="lazy" />
-            ) : (
-              <span className="flex h-14 w-full items-center justify-center text-[9px] text-muted">
-                {f.kind === "video" ? "Video" : "File"}
-              </span>
-            )}
-          </a>
-        </li>
+    <div className="space-y-2">
+      {sections.map((sec, i) => (
+        <div key={i}>
+          <p className="mb-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-muted">
+            {sec.name}
+          </p>
+          {sec.rows.length === 0 ? (
+            <p className="text-[11px] text-muted">Measured, nothing written down.</p>
+          ) : (
+            <RowsSummary columns={columns} rows={sec.rows} />
+          )}
+        </div>
       ))}
-    </ul>
+    </div>
+  );
+}
+
+/** What was ticked on site — and, more usefully, what wasn't. */
+function ChecklistSummary({
+  items,
+  checked,
+}: {
+  items: string[];
+  checked: string[];
+}) {
+  if (items.length === 0) return null;
+  const missed = items.filter((i) => !checked.includes(i));
+  return (
+    <div>
+      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+        {checked.length} of {items.length} done
+      </p>
+      {missed.length > 0 && (
+        <p className="mt-1 text-[11px] text-marigold">Not done: {missed.join(", ")}</p>
+      )}
+    </div>
   );
 }

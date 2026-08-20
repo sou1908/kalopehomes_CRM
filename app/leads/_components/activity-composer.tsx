@@ -6,7 +6,8 @@ import { addActivityAction } from "../actions";
 import { CALL_OUTCOMES, type JourneyField } from "@/lib/leads-shared";
 import { DateTimeField } from "./date-time-field";
 import { RowsField } from "./rows-field";
-import { FilesField } from "./files-field";
+import { SectionsField } from "./sections-field";
+import { ChecklistField } from "./checklist-field";
 
 const KINDS: { value: string; label: string }[] = [
   { value: "note", label: "📝 Note" },
@@ -141,9 +142,10 @@ export function ActivityComposer({
 function StageField({ field, value }: { field: JourneyField; value: string }) {
   const id = `f_${field.key}`;
 
-  // Rows and files carry their own controls, and neither is a single input, so
-  // they can't sit inside a <label> without the click target being wrong.
-  if (field.type === "rows" || field.type === "files") {
+  // These carry their own controls and none is a single input, so they can't
+  // sit inside a <label> without the click target being wrong.
+  const COMPOSITE = ["rows", "sections", "checklist"];
+  if (COMPOSITE.includes(field.type)) {
     return (
       <div>
         <span className="mb-1 block text-[11px] uppercase tracking-wide text-muted">
@@ -156,8 +158,15 @@ function StageField({ field, value }: { field: JourneyField; value: string }) {
             defaultValue={value}
             addLabel={`Add ${field.label.toLowerCase()}`}
           />
+        ) : field.type === "sections" ? (
+          <SectionsField
+            name={id}
+            columns={field.columns ?? []}
+            defaultValue={value}
+            suggestions={field.options ?? []}
+          />
         ) : (
-          <FilesField name={id} defaultValue={value} />
+          <ChecklistField name={id} items={field.options ?? []} defaultValue={value} />
         )}
         {field.hint && (
           <p className="mt-1.5 text-[11px] leading-relaxed text-muted">{field.hint}</p>

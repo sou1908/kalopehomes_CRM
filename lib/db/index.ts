@@ -514,69 +514,6 @@ try {
   console.error("[migrate] pipeline history backfill failed:", err);
 }
 
-// 9. The Visited stage's questions grew — photos, measurements and what goes
-//    where were added after it was first seeded. Bootstrap only fills stages
-//    whose fields are empty, so a grown seed never reaches an existing org.
-//
-//    Keyed on the exact old set, so it fires once and can't touch a stage
-//    someone has since changed. Idempotent: after it runs, nothing matches.
-try {
-  const OLD_VISITED =
-    '[{"key":"office_visit","label":"Office visit too?","type":"yesno"},{"key":"office_at","label":"Office visit date & time","type":"datetime"},{"key":"visit_outcome","label":"How did it go?","type":"text"}]';
-  const rows = sqlite
-    .prepare(
-      `SELECT s.id, s.fields FROM lead_stages s
-         JOIN pipelines p ON p.id = s.pipeline_id
-        WHERE s.name = 'Visited'`,
-    )
-    .all() as Array<{ id: string; fields: string }>;
-  for (const row of rows) {
-    if (row.fields.replace(/\s+/g, "") !== OLD_VISITED.replace(/\s+/g, "")) continue;
-    sqlite
-      .prepare(`UPDATE lead_stages SET fields = ? WHERE id = ?`)
-      .run(
-        JSON.stringify([
-          {
-            key: "photos",
-            label: "Photos & video from the site",
-            type: "files",
-            hint: "What the room looks like now — the quotation gets built from these.",
-          },
-          {
-            key: "measurements",
-            label: "Measurements",
-            type: "rows",
-            hint: "One row per area. Kept as numbers so a quotation can be worked out from them.",
-            columns: [
-              { key: "area", label: "Area" },
-              { key: "width", label: "Width", narrow: true },
-              { key: "height", label: "Height", narrow: true },
-              { key: "depth", label: "Depth", narrow: true },
-              { key: "unit", label: "Unit", narrow: true, options: ["ft", "in", "mm", "m"] },
-            ],
-          },
-          {
-            key: "placement",
-            label: "What goes where",
-            type: "rows",
-            hint: "The plan in the customer's words — north wall, tall unit; above sink, wall cabinets.",
-            columns: [
-              { key: "location", label: "Location" },
-              { key: "item", label: "What goes there" },
-            ],
-          },
-          { key: "office_visit", label: "Office visit too?", type: "yesno" },
-          { key: "office_at", label: "Office visit date & time", type: "datetime" },
-          { key: "visit_outcome", label: "How did it go?", type: "text" },
-        ]),
-        row.id,
-      );
-    console.log("[migrate] Visited stage questions updated");
-  }
-} catch (err) {
-  console.error("[migrate] Visited fields update failed:", err);
-}
-
 // Shared to-do list (assignable). Created here (after users) with its own
 // upgrade ALTERs so older DBs pick up the newer columns.
 try {

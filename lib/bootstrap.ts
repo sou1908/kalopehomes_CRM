@@ -16,6 +16,8 @@ import {
   DEFAULT_LEAD_STAGES,
   DEFAULT_LEAD_TAGS,
   DEFAULT_PIPELINES,
+  parseJourneyFields,
+  KNOWN_FIELD_TYPES,
 } from "./leads-shared";
 
 let bootstrapPromise: Promise<void> | null = null;
@@ -232,15 +234,37 @@ export function ensureAdminUser(): Promise<void> {
         .from(leadStages)
         .where(and(eq(leadStages.orgId, orgId), eq(leadStages.pipelineId, p.id)));
       for (const row of rows) {
-        if (row.fields && row.fields !== "[]") continue;
         const st = seed.stages.find(
           (x) => x.name.toLowerCase() === row.name.toLowerCase(),
         );
         if (!st?.fields?.length) continue;
+
+        const current = parseJourneyFields(row.fields);
+
+        // Empty: fill it in.
+        let refresh = current.length === 0;
+
+        // Drifted: a key the seed defines is stored with a different type, or
+        // a type that no longer exists. That's a shape the UI can no longer
+        // render, so it's repaired rather than left broken.
+        //
+        // Deliberately narrow — it never touches fields someone added or
+        // removed, only ones whose definition has changed underneath them.
+        // Revisit when the field editor ships and stages become user-owned.
+        if (!refresh) {
+          refresh = current.some((f) => {
+            if (!KNOWN_FIELD_TYPES.includes(f.type)) return true;
+            const seeded = st.fields!.find((x) => x.key === f.key);
+            return seeded != null && seeded.type !== f.type;
+          });
+        }
+
+        if (!refresh) continue;
         await db
           .update(leadStages)
           .set({ fields: JSON.stringify(st.fields) })
           .where(eq(leadStages.id, row.id));
+        console.log(`[bootstrap] Refreshed ${row.name} stage questions`);
       }
     }
 

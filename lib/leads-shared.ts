@@ -44,10 +44,24 @@ export type JourneyFieldType =
   | "date"
   | "datetime"
   | "select"
-  /** A repeatable table — measurements, what goes where. */
+  /** A flat repeatable table — what goes where. */
   | "rows"
-  /** Photos and video captured on site. */
-  | "files";
+  /** Named groups, each with its own rows — measurements per area. */
+  | "sections"
+  /** Tick-list of things to confirm on site. */
+  | "checklist";
+
+/** Every field type the UI can render — anything else is stale data. */
+export const KNOWN_FIELD_TYPES: string[] = [
+  "text",
+  "yesno",
+  "date",
+  "datetime",
+  "select",
+  "rows",
+  "sections",
+  "checklist",
+];
 
 /** One column of a `rows` field. */
 export type JourneyColumn = {
@@ -84,14 +98,29 @@ export function parseJourneyRows(raw: string | null | undefined): JourneyRow[] {
   }
 }
 
-/** One uploaded file on a `files` field. */
-export type JourneyFile = { url: string; name: string; kind: string };
+/** One named group of a `sections` field — an area and its measurements. */
+export type JourneySection = { name: string; rows: JourneyRow[] };
 
-export function parseJourneyFiles(raw: string | null | undefined): JourneyFile[] {
+export function parseJourneySections(
+  raw: string | null | undefined,
+): JourneySection[] {
   if (!raw) return [];
   try {
     const v = JSON.parse(raw);
-    return Array.isArray(v) ? (v as JourneyFile[]) : [];
+    return Array.isArray(v)
+      ? (v as JourneySection[]).filter((x) => x && typeof x.name === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Ticked items of a `checklist` field, stored as a JSON array of labels. */
+export function parseJourneyChecks(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
   } catch {
     return [];
   }
@@ -254,18 +283,38 @@ export const DEFAULT_PIPELINES: Array<{
         probability: 70,
         fields: [
           {
-            key: "photos",
-            label: "Photos & video from the site",
-            type: "files",
-            hint: "What the room looks like now — the quotation gets built from these.",
+            key: "site_checklist",
+            label: "On-site checklist",
+            type: "checklist",
+            hint: "Tick what was done. Anything left unticked is what the office chases.",
+            options: [
+              "All areas measured",
+              "Photos taken",
+              "Electrical points noted",
+              "Plumbing points noted",
+              "Budget discussed",
+              "Timeline discussed",
+              "Catalogue / samples shown",
+            ],
           },
           {
             key: "measurements",
             label: "Measurements",
-            type: "rows",
-            hint: "One row per area. Kept as numbers so a quotation can be worked out from them.",
+            type: "sections",
+            hint: "Add the area you measured, then its dimensions. One section per area.",
+            // Suggestions, not a fixed list — the name box accepts anything.
+            options: [
+              "Kitchen",
+              "Wardrobe",
+              "Living room",
+              "Bedroom",
+              "Bathroom",
+              "Balcony",
+              "Study",
+              "Pooja room",
+            ],
             columns: [
-              { key: "area", label: "Area" },
+              { key: "part", label: "Part / wall" },
               { key: "width", label: "Width", narrow: true },
               { key: "height", label: "Height", narrow: true },
               { key: "depth", label: "Depth", narrow: true },
