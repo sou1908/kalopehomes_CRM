@@ -39,6 +39,37 @@ function describe(err: unknown): { code: string; hint: string } {
 }
 
 /**
+ * What MySQL itself said about the refusal, reduced to two booleans.
+ *
+ * The driver's message reads:
+ *   Access denied for user 'name'@'10.1.2.3' (using password: YES)
+ *
+ * The host in that string is the address MySQL saw the connection arrive from,
+ * which is the one fact that separates "the password is wrong" from "this user
+ * is not granted access from that machine" — a grant is per host, so a user
+ * that works in phpMyAdmin can still be refused from an app container.
+ *
+ * Reported as classifications, never as the address or the username.
+ */
+function refusalDetail(err: unknown): {
+  sentPassword: boolean | null;
+  serverSawLoopbackClient: boolean | null;
+} {
+  const message = (err as { message?: string })?.message ?? "";
+  const usingPassword = /using password:\s*(YES|NO)/i.exec(message);
+  const at = /@'([^']*)'/.exec(message);
+  const host = at?.[1] ?? null;
+
+  return {
+    sentPassword: usingPassword ? usingPassword[1].toUpperCase() === "YES" : null,
+    serverSawLoopbackClient:
+      host === null
+        ? null
+        : host === "localhost" || host === "127.0.0.1" || host === "::1",
+  };
+}
+
+/**
  * Structural facts about the credentials, for when the server rejects them.
  *
  * Shapes only — never a username, a password, or a hostname. On shared hosting
@@ -96,7 +127,13 @@ export async function GET() {
   } catch (err) {
     console.error("[health] connect failed:", err);
     return NextResponse.json(
-      { ok: false, step: "connect", ...describe(err), checks: credentialShape() },
+      {
+        ok: false,
+        step: "connect",
+        ...describe(err),
+        server: refusalDetail(err),
+        checks: credentialShape(),
+      },
       { status: 503 },
     );
   }
