@@ -54,18 +54,27 @@ function describe(err: unknown): { code: string; hint: string } {
 function refusalDetail(err: unknown): {
   sentPassword: boolean | null;
   serverSawLoopbackClient: boolean | null;
+  serverSawClientAs: string | null;
 } {
   const message = (err as { message?: string })?.message ?? "";
   const usingPassword = /using password:\s*(YES|NO)/i.exec(message);
   const at = /@'([^']*)'/.exec(message);
   const host = at?.[1] ?? null;
 
+  const loopback =
+    host === "localhost" || host === "127.0.0.1" || host === "::1";
+
   return {
     sentPassword: usingPassword ? usingPassword[1].toUpperCase() === "YES" : null,
-    serverSawLoopbackClient:
-      host === null
-        ? null
-        : host === "localhost" || host === "127.0.0.1" || host === "::1",
+    serverSawLoopbackClient: host === null ? null : loopback,
+    // The exact address, but only when it is loopback — those three strings
+    // carry no information about anyone. A real address stays hidden.
+    //
+    // This is the distinction that matters: MySQL treats 'user'@'localhost',
+    // 'user'@'127.0.0.1' and 'user'@'::1' as three separate accounts. A grant
+    // for one does not cover the others, and the refusal looks exactly like a
+    // wrong password.
+    serverSawClientAs: host === null ? null : loopback ? host : "(non-loopback)",
   };
 }
 
