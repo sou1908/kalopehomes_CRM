@@ -277,7 +277,20 @@ export default async function LeadDetailPage({
             step is filled from it afterwards. */}
         <section className="no-scrollbar min-w-0 lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
           <SectionLabel>Activity</SectionLabel>
-          {canWork && <ActivityComposer leadId={lead.id} />}
+          {canWork && (
+            <ActivityComposer
+              leadId={lead.id}
+              stageName={currentStage?.name ?? null}
+              fields={
+                currentStage
+                  ? fieldsForStage(currentStage, leadPipeline?.name ?? "")
+                  : []
+              }
+              values={
+                lead.pipelineId ? (fullJourney[lead.pipelineId]?.fields ?? {}) : {}
+              }
+            />
+          )}
           <div className="mt-3">
             <RailTabs
               tabs={[
