@@ -15,6 +15,8 @@ import {
   formatFollowUp,
   parseJourney,
   fieldsForStage,
+  scheduleFieldOf,
+  formatJourneyValue,
   telHref,
 } from "@/lib/leads-shared";
 import { listAssignableMembers } from "@/lib/members";
@@ -128,6 +130,18 @@ export default async function LeadDetailPage({
   // (workableIds below), not to reading what an earlier team recorded.
   const fullJourney = parseJourney(lead.journey);
   const journey = fullJourney;
+
+  // The appointment the current stage asked for — a booked visit or revisit —
+  // so the header says what is coming, not just when something is due.
+  const appointment = (() => {
+    if (!currentStage || !lead.pipelineId) return null;
+    const field = scheduleFieldOf(fieldsForStage(currentStage, leadPipeline?.name ?? ""));
+    if (!field) return null;
+    const raw = fullJourney[lead.pipelineId]?.fields?.[field.key];
+    if (!raw) return null;
+    return { label: field.label, when: formatJourneyValue(raw, field.type) };
+  })();
+
   // Completed milestones, oldest → newest, for the journey timeline.
   const journeySteps = pipelines
     .filter((d) => fullJourney[d.id]?.done || history[d.id])
@@ -214,6 +228,18 @@ export default async function LeadDetailPage({
                   >
                     ⏰ {fu === "overdue" ? "Overdue" : "Follow up"} ·{" "}
                     {formatFollowUp(lead.followUpAt)}
+                  </span>
+                )}
+
+                {/* The appointment this stage asked for, named. The follow-up
+                    chip beside it says when it's due; this says what it is. */}
+                {appointment && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-0.5 text-[11px] text-accentInk"
+                    title={appointment.label}
+                  >
+                    <Icon name="clock" size={11} />
+                    {appointment.label} · {appointment.when}
                   </span>
                 )}
                 {leadTags.map((t) => (

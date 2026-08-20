@@ -8,6 +8,7 @@ import {
   updateLead,
   setLeadStage,
   setLeadFollowUp,
+  getStage,
   deleteLead,
   getLead,
   createLeadStage,
@@ -49,7 +50,11 @@ import { canWorkLead } from "@/lib/access";
 // TEMPORARY — testing only, remove before launch.
 import { deleteAllLeads } from "@/lib/danger";
 import { saveJourneyStep } from "@/lib/journey";
-import { CALL_OUTCOMES } from "@/lib/leads-shared";
+import {
+  CALL_OUTCOMES,
+  fieldsForStage,
+  scheduleFieldOf,
+} from "@/lib/leads-shared";
 
 // Telecallers (L1), field agents (L2) and the Lead Manager all work leads.
 const LEAD_ROLES = ["telecaller", "site_agent", "admin"] as const;
@@ -576,6 +581,18 @@ export async function addActivityAction(
         complete: false,
         actor: { userId: user.id, name: user.name },
       });
+
+      // A stage can ask for an appointment — a revisit, a site visit. That's a
+      // commitment someone has to turn up for, so it becomes the lead's
+      // follow-up: it then surfaces in Needs attention and goes overdue if the
+      // day passes, which is the whole point of booking it.
+      const stage = lead.stageId ? await getStage(lead.stageId, user.orgId) : null;
+      const appointment = scheduleFieldOf(fieldsForStage(stage, ""));
+      const when = appointment ? values[appointment.key] : undefined;
+      if (when) {
+        const at = parseDate(when);
+        if (at) await setLeadFollowUp(leadId, user.orgId, at);
+      }
     }
   }
 

@@ -70,7 +70,18 @@ export type JourneyField = {
   columns?: JourneyColumn[];
   /** Shown under the field — say what good input looks like. */
   hint?: string;
+  /**
+   * This date is a commitment someone has to turn up for, not just a note.
+   * Saving it sets the lead's follow-up, so it surfaces in Needs attention and
+   * goes overdue if the day passes — which a booked revisit should.
+   */
+  schedules?: boolean;
 };
+
+/** The appointment a stage is asking for, if it asks for one. */
+export function scheduleFieldOf(fields: JourneyField[]): JourneyField | null {
+  return fields.find((f) => f.schedules) ?? null;
+}
 
 /** One row of a `rows` field: column key → value. */
 export type JourneyRow = Record<string, string>;
@@ -240,7 +251,7 @@ export const DEFAULT_PIPELINES: Array<{
         probability: 50,
         fields: [
           { key: "requirement", label: "What they want", type: "text" },
-          { key: "visit_scheduled", label: "Site visit booked for", type: "datetime" },
+          { key: "visit_scheduled", label: "Site visit booked for", type: "datetime", schedules: true },
         ],
       },
       {
@@ -291,7 +302,7 @@ export const DEFAULT_PIPELINES: Array<{
         position: 10,
         probability: 55,
         fields: [
-          { key: "visit_at", label: "Visit date & time", type: "datetime" },
+          { key: "visit_at", label: "Visit date & time", type: "datetime", schedules: true },
           { key: "visit_note", label: "Notes for the visit", type: "text" },
         ],
       },
@@ -360,7 +371,7 @@ export const DEFAULT_PIPELINES: Array<{
         probability: 40,
         fields: [
           { key: "revisit_why", label: "Why a revisit?", type: "text" },
-          { key: "revisit_at", label: "Revisit booked for", type: "datetime" },
+          { key: "revisit_at", label: "Revisit booked for", type: "datetime", schedules: true },
         ],
       },
       {

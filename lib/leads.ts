@@ -46,7 +46,10 @@ export async function listLeadStages(orgId: string): Promise<LeadStage[]> {
     .orderBy(asc(leadStages.position), asc(leadStages.createdAt));
 }
 
-async function getStage(id: string, orgId: string): Promise<LeadStage | null> {
+export async function getStage(
+  id: string,
+  orgId: string,
+): Promise<LeadStage | null> {
   const rows = await db
     .select()
     .from(leadStages)
