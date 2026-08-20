@@ -51,6 +51,24 @@ export async function unreadNotificationCount(userId: string): Promise<number> {
   return Number(rows[0]?.c ?? 0);
 }
 
+/**
+ * The link stored on the notification, or null if it isn't this user's.
+ *
+ * Read from the row rather than taken from the form, so what we redirect to is
+ * something we wrote ourselves.
+ */
+export async function notificationLink(
+  id: string,
+  userId: string,
+): Promise<string | null> {
+  const rows = await db
+    .select({ link: notifications.link })
+    .from(notifications)
+    .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
+    .limit(1);
+  return rows[0]?.link ?? null;
+}
+
 export async function markNotificationRead(id: string, userId: string): Promise<void> {
   await db
     .update(notifications)

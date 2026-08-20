@@ -553,6 +553,14 @@ try {
   sqlite.exec(`UPDATE todos SET creator_user_id = user_id WHERE creator_user_id IS NULL;`);
 } catch {}
 
+// Sessions that have already expired are dead weight: they can never
+// authenticate anyone again, but they sit in the table as valid-looking tokens
+// and grow it without bound. Cleared at boot, which for a single-process app is
+// often enough and costs nothing.
+try {
+  sqlite.exec(`DELETE FROM sessions WHERE expires_at < unixepoch() * 1000;`);
+} catch {}
+
 export const db = drizzle(sqlite, { schema });
 export { schema };
 

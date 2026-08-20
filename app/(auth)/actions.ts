@@ -12,6 +12,13 @@ import { checkRateLimit, recordFailure, clearRateLimit } from "@/lib/rate-limit"
 
 export type ActionState = { error?: string } | undefined;
 
+/**
+ * A real bcrypt hash of a value nobody knows, at the same cost as ours.
+ * Only ever compared against, never matched — it exists to burn the same
+ * milliseconds a genuine check would.
+ */
+const DUMMY_HASH = "$2a$10$TgmlJR5eRNSEqgbSGJb54eK5k9FI3YGTQp85pr..6cD2i3RdsoKK2";
+
 export async function loginAction(
   _prev: ActionState,
   formData: FormData,
@@ -44,10 +51,14 @@ export async function loginAction(
     return { error: "Invalid email or password." };
   };
 
-  if (row.length === 0) return fail();
-  // Client accounts use a magic link, not a password — their stored hash is a
-  // sentinel, never a real bcrypt hash ($2…). Reject without leaking which is which.
-  if (!row[0].passwordHash.startsWith("$2")) return fail();
+  // Hash against a throwaway when there is no password to check, so a real
+  // address and an unknown one take the same time to answer. Returning
+  // instantly on a miss tells an attacker which addresses exist, which is the
+  // first half of the guess.
+  if (row.length === 0 || !row[0].passwordHash.startsWith("$2")) {
+    await verifyPassword(password, DUMMY_HASH);
+    return fail();
+  }
   const ok = await verifyPassword(password, row[0].passwordHash);
   if (!ok) return fail();
 
