@@ -1,25 +1,43 @@
 "use client";
 
 import { useState } from "react";
-import { parseJourneyChecks, type JourneyCheck } from "@/lib/leads-shared";
+import {
+  parseJourneyChecks,
+  CHECK_STATUSES,
+  type CheckStatus,
+  type JourneyCheck,
+} from "@/lib/leads-shared";
 import { Icon } from "@/app/_components/icons";
 
 /**
- * A tick-list for a stage — what was done on site, and anything worth saying
- * about it.
+ * A three-answer checklist for a stage: yes, no, or pending.
  *
- * A remark is allowed on any item, ticked or not. "Not done, meter box was
- * locked" tells the office more than an empty box does, and it's the reason
- * they'd otherwise have to ring the agent to find out.
+ * A checkbox couldn't tell "we couldn't do it" from "still to do", and those
+ * need different things from the office — the first is a problem to solve, the
+ * second is a reminder. Everything starts pending, because at the top of a
+ * visit it genuinely is.
  *
- * Stored keyed by the item's own label rather than an index or generated id, so
- * reordering the list doesn't scramble what was recorded. Renaming an item does
- * lose its entry — the right trade for a checklist that changes as the business
- * learns what to check.
+ * A remark is allowed on any answer. "No — meter box was locked" is what saves
+ * the office ringing the agent to ask why.
  *
- * Submits `name` as JSON: [{ item, checked, note? }], skipping items that are
- * neither ticked nor annotated.
+ * Stored keyed by the item's own label, so reordering the list can't scramble
+ * what was recorded. Only items actually answered or annotated are stored —
+ * absence reads as pending.
+ *
+ * Submits `name` as JSON: [{ item, status, note? }].
  */
+const LABELS: Record<CheckStatus, string> = {
+  yes: "Yes",
+  no: "No",
+  pending: "Pending",
+};
+
+const TONE: Record<CheckStatus, string> = {
+  yes: "bg-success/15 text-success border-success/40",
+  no: "bg-danger/15 text-danger border-danger/40",
+  pending: "bg-marigold/15 text-marigold border-marigold/40",
+};
+
 export function ChecklistField({
   name,
   items,
@@ -32,8 +50,7 @@ export function ChecklistField({
   const [state, setState] = useState<JourneyCheck[]>(() =>
     parseJourneyChecks(defaultValue),
   );
-  // Which rows are showing their remark box — a remark already written keeps
-  // its box open on its own.
+  // Rows showing their remark box. A remark already written keeps its own open.
   const [open, setOpen] = useState<string[]>([]);
 
   const entry = (item: string) => state.find((s) => s.item === item);
@@ -43,66 +60,81 @@ export function ChecklistField({
       const found = s.find((x) => x.item === item);
       const next: JourneyCheck = {
         item,
-        checked: found?.checked ?? false,
+        status: found?.status ?? "pending",
         note: found?.note,
         ...patch,
       };
-      const rest = s.filter((x) => x.item !== item);
-      return [...rest, next];
+      return [...s.filter((x) => x.item !== item), next];
     });
 
   if (items.length === 0) return null;
 
-  // Only rows that say something are worth storing.
+  // Pending with no remark is the starting state — nothing to record.
   const stored = state.filter(
-    (s) => s.checked || (s.note != null && s.note.trim() !== ""),
+    (s) => s.status !== "pending" || (s.note != null && s.note.trim() !== ""),
   );
-  const doneCount = stored.filter((s) => s.checked).length;
+  const count = (st: CheckStatus) =>
+    items.filter((i) => (entry(i)?.status ?? "pending") === st).length;
 
   return (
     <div>
       <input type="hidden" name={name} value={JSON.stringify(stored)} />
 
-      <ul className="grid gap-1 sm:grid-cols-2">
+      <ul className="space-y-1">
         {items.map((item) => {
           const e = entry(item);
-          const on = e?.checked ?? false;
+          const status: CheckStatus = e?.status ?? "pending";
           const note = e?.note ?? "";
           const showNote = note !== "" || open.includes(item);
 
           return (
-            <li
-              key={item}
-              className={`rounded-md px-2 py-1.5 transition-colors ${
-                on ? "bg-success/10" : "hover:bg-elevated"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <label
-                  className={`flex flex-1 cursor-pointer items-center gap-2 text-[13px] ${
-                    on ? "text-text" : "text-muted"
+            <li key={item} className="rounded-md px-2 py-1.5 hover:bg-elevated/60">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <span
+                  className={`min-w-0 flex-1 text-[13px] ${
+                    status === "pending" ? "text-muted" : "text-text"
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={on}
-                    onChange={() => set(item, { checked: !on })}
-                    className="accent-accent"
-                  />
                   {item}
-                </label>
+                </span>
 
-                {!showNote && (
-                  <button
-                    type="button"
-                    onClick={() => setOpen((o) => [...o, item])}
-                    title={`Add a remark about "${item}"`}
-                    aria-label={`Add a remark about ${item}`}
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted/60 transition-colors hover:bg-elevated hover:text-text"
-                  >
-                    <Icon name="plus" size={12} />
-                  </button>
-                )}
+                <div
+                  role="radiogroup"
+                  aria-label={item}
+                  className="flex shrink-0 items-center gap-1"
+                >
+                  {CHECK_STATUSES.map((st) => {
+                    const on = status === st;
+                    return (
+                      <button
+                        key={st}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => set(item, { status: st })}
+                        className={`rounded-full border px-2.5 py-0.5 text-[11px] transition-colors ${
+                          on
+                            ? TONE[st]
+                            : "border-border text-muted hover:border-accent/40 hover:text-text"
+                        }`}
+                      >
+                        {LABELS[st]}
+                      </button>
+                    );
+                  })}
+
+                  {!showNote && (
+                    <button
+                      type="button"
+                      onClick={() => setOpen((o) => [...o, item])}
+                      title={`Add a remark about "${item}"`}
+                      aria-label={`Add a remark about ${item}`}
+                      className="flex h-6 w-6 items-center justify-center rounded text-muted/60 transition-colors hover:bg-elevated hover:text-text"
+                    >
+                      <Icon name="plus" size={12} />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {showNote && (
@@ -121,7 +153,7 @@ export function ChecklistField({
       </ul>
 
       <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-        {doneCount} of {items.length} done
+        {count("yes")} yes · {count("no")} no · {count("pending")} pending
       </p>
     </div>
   );

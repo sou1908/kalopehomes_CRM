@@ -104,14 +104,26 @@ export function parseJourneySections(
 }
 
 /**
- * One checklist item's state. A remark is allowed whether or not the item is
- * ticked — "not done, customer wasn't home" is the more useful of the two.
+ * One checklist item's state.
+ *
+ * Three answers, not a checkbox: an unticked box can't tell "we couldn't do it"
+ * from "still to do", and those need different things from the office — one is
+ * a problem, the other is a reminder.
+ *
+ * A remark is allowed on any of them. "No — meter box was locked" tells them
+ * more than the answer alone.
  */
-export type JourneyCheck = { item: string; checked: boolean; note?: string };
+export type CheckStatus = "yes" | "no" | "pending";
+
+export type JourneyCheck = { item: string; status: CheckStatus; note?: string };
+
+export const CHECK_STATUSES: CheckStatus[] = ["yes", "no", "pending"];
 
 /**
- * Reads a checklist value. Tolerates the original shape — a plain array of
- * ticked labels — so anything recorded before remarks existed still loads.
+ * Reads a checklist value, tolerating both earlier shapes: a plain array of
+ * ticked labels, and the {item, checked} form that replaced it. A box that was
+ * merely unticked becomes "pending" rather than "no" — it never meant the
+ * stronger thing.
  */
 export function parseJourneyChecks(raw: string | null | undefined): JourneyCheck[] {
   if (!raw) return [];
@@ -120,22 +132,20 @@ export function parseJourneyChecks(raw: string | null | undefined): JourneyCheck
     if (!Array.isArray(v)) return [];
     return v
       .map((x): JourneyCheck | null => {
-        if (typeof x === "string") return { item: x, checked: true };
-        if (x && typeof x.item === "string") {
-          return {
-            item: x.item,
-            checked: Boolean(x.checked),
-            note: typeof x.note === "string" && x.note.trim() !== "" ? x.note : undefined,
-          };
+        if (typeof x === "string") return { item: x, status: "yes" };
+        if (!x || typeof x.item !== "string") return null;
+        const note =
+          typeof x.note === "string" && x.note.trim() !== "" ? x.note : undefined;
+        if (typeof x.status === "string" && CHECK_STATUSES.includes(x.status)) {
+          return { item: x.item, status: x.status as CheckStatus, note };
         }
-        return null;
+        return { item: x.item, status: x.checked ? "yes" : "pending", note };
       })
       .filter((x): x is JourneyCheck => x !== null);
   } catch {
     return [];
   }
 }
-
 // Default fields per pipeline, matched by pipeline name (lower-cased). Unknown pipelines
 // fall back to a single Notes field. Make these configurable later if kept.
 export const JOURNEY_FORMS: Record<string, JourneyField[]> = {

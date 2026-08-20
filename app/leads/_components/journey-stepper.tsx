@@ -11,6 +11,7 @@ import {
   type JourneyRow,
   type JourneySection,
   type JourneyCheck,
+  type CheckStatus,
   type PipelineInfo,
   type LeadStageInfo,
   type JourneyData,
@@ -425,7 +426,7 @@ function SectionsSummary({
   );
 }
 
-/** What was ticked on site — and, more usefully, what wasn't. */
+/** The three answers read back — with the problems first. */
 function ChecklistSummary({
   items,
   checks,
@@ -434,29 +435,42 @@ function ChecklistSummary({
   checks: JourneyCheck[];
 }) {
   if (items.length === 0) return null;
-  const done = checks.filter((c) => c.checked).map((c) => c.item);
-  const missed = items.filter((i) => !done.includes(i));
-  const remarks = checks.filter((c) => c.note && c.note.trim() !== "");
+
+  const statusOf = (item: string): CheckStatus =>
+    checks.find((c) => c.item === item)?.status ?? "pending";
+  const noteOf = (item: string) => checks.find((c) => c.item === item)?.note;
+
+  const yes = items.filter((i) => statusOf(i) === "yes");
+  const no = items.filter((i) => statusOf(i) === "no");
+  const pending = items.filter((i) => statusOf(i) === "pending");
+
+  const line = (item: string) => {
+    const n = noteOf(item);
+    return n ? `${item} — ${n}` : item;
+  };
 
   return (
-    <div>
+    <div className="space-y-1">
       <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-        {done.length} of {items.length} done
+        {yes.length} yes · {no.length} no · {pending.length} pending
       </p>
-      {missed.length > 0 && (
-        <p className="mt-1 text-[11px] text-marigold">Not done: {missed.join(", ")}</p>
+
+      {/* A "no" is a problem someone has to solve, so it leads. */}
+      {no.length > 0 && (
+        <p className="text-[11px] text-danger">No: {no.map(line).join(" · ")}</p>
       )}
-      {remarks.length > 0 && (
-        <ul className="mt-1.5 space-y-0.5">
-          {remarks.map((r) => (
-            <li key={r.item} className="text-[11px]">
-              <span className={r.checked ? "text-muted" : "text-marigold"}>
-                {r.item}:
-              </span>{" "}
-              <span className="text-text">{r.note}</span>
-            </li>
-          ))}
-        </ul>
+      {pending.length > 0 && (
+        <p className="text-[11px] text-marigold">
+          Pending: {pending.map(line).join(" · ")}
+        </p>
+      )}
+      {yes.filter((i) => noteOf(i)).length > 0 && (
+        <p className="text-[11px] text-muted">
+          {yes
+            .filter((i) => noteOf(i))
+            .map(line)
+            .join(" · ")}
+        </p>
       )}
     </div>
   );
