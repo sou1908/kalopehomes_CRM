@@ -204,8 +204,10 @@ export function ensureAdminUser(): Promise<void> {
       );
       if (present.size > 0 && seed.stages.every((st) => present.has(st.name.toLowerCase())))
         continue;
+      let added = 0;
       for (const st of seed.stages) {
         if (present.has(st.name.toLowerCase())) continue;
+        added++;
         await db.insert(leadStages).values({
           id: nanoid(21),
           orgId,
@@ -219,7 +221,9 @@ export function ensureAdminUser(): Promise<void> {
           fields: JSON.stringify(st.fields ?? []),
         });
       }
-      console.log(`[bootstrap] Seeded ${seed.stages.length} stages for ${p.name}`);
+      if (added > 0) {
+        console.log(`[bootstrap] Added ${added} stage(s) to ${p.name}`);
+      }
     }
 
     // Stages that predate per-stage questions get theirs filled in by name.

@@ -364,6 +364,53 @@ export const DEFAULT_PIPELINES: Array<{
         ],
       },
       {
+        // Where the visit turns into a number. The payment thread starts here:
+        // whether an advance came in is the difference between a quote sent and
+        // a job beginning.
+        name: "Quotation",
+        color: "#6a89a8",
+        kind: "open",
+        position: 40,
+        probability: 80,
+        fields: [
+          { key: "quote_amount", label: "Quotation amount (₹)", type: "text" },
+          { key: "quote_shared_at", label: "Shared with customer on", type: "datetime" },
+          {
+            key: "advance_status",
+            label: "Advance",
+            type: "select",
+            options: ["Received", "Promised", "Not yet"],
+          },
+          { key: "advance_amount", label: "Advance amount (₹)", type: "text" },
+          { key: "quote_note", label: "Notes", type: "text" },
+        ],
+      },
+      {
+        // Distinct from "Visit cancelled": they saw us and said no, rather than
+        // the visit never happening. Different reasons, and different lessons.
+        name: "Not interested",
+        color: "#ef4444",
+        kind: "lost",
+        position: 80,
+        probability: 0,
+        fields: [
+          {
+            key: "lost_reason",
+            label: "Why not?",
+            type: "select",
+            options: [
+              "Price too high",
+              "Design not liked",
+              "Postponed the project",
+              "Went with someone else",
+              "Space not suitable",
+              "Stopped responding",
+            ],
+          },
+          { key: "lost_note", label: "Anything else", type: "text" },
+        ],
+      },
+      {
         name: "Visit cancelled",
         color: "#ef4444",
         kind: "lost",
