@@ -126,7 +126,8 @@ export async function runFollowUpDigest(
   await db
     .insert(digestState)
     .values({ orgId, lastRunDate: key })
-    .onConflictDoUpdate({ target: digestState.orgId, set: { lastRunDate: key } });
+    // MySQL's spelling of upsert — keys off the primary key, org_id.
+    .onDuplicateKeyUpdate({ set: { lastRunDate: key } });
 
   return { ran: true, notified };
 }

@@ -2,7 +2,7 @@ import "server-only";
 import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
-import { db } from "./db";
+import { db, ensureSchema } from "./db";
 import {
   users,
   organizations,
@@ -41,6 +41,12 @@ function slugify(input: string): string {
 export function ensureAdminUser(): Promise<void> {
   if (bootstrapPromise) return bootstrapPromise;
   bootstrapPromise = (async () => {
+    // The tables have to exist before anything below queries them. Under
+    // SQLite this happened synchronously as lib/db was imported; MySQL is
+    // asynchronous, so it has to be awaited, and this is the one place every
+    // database-touching path already passes through.
+    await ensureSchema();
+
     // 1. Default organization (tenant boundary; one row in v0).
     const orgName = (process.env.ORG_NAME ?? "My Agency").trim();
     const orgSlug = slugify(process.env.ORG_SLUG ?? orgName);
