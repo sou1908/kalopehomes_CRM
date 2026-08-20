@@ -6,13 +6,14 @@ import { LEAD_SURFACE_ROLES } from "@/lib/roles";
 
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR ?? "./uploads");
 
+// SVG is deliberately absent: browsers render it inline and run scripts inside
+// it, which would make an upload a stored XSS on our own origin.
 const MIME_BY_EXT: Record<string, string> = {
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
   ".webp": "image/webp",
   ".gif": "image/gif",
-  ".svg": "image/svg+xml",
   ".mp4": "video/mp4",
   ".webm": "video/webm",
   ".mp3": "audio/mpeg",
@@ -48,9 +49,15 @@ export async function GET(
     // Infer mime from the file extension (uploads are to-do attachments).
     const mime =
       MIME_BY_EXT[path.extname(rel).toLowerCase()] ?? "application/octet-stream";
+    // Images and video are shown in place; everything else downloads rather
+    // than rendering, so an unexpected type can't execute in the page.
+    const inline = mime.startsWith("image/") || mime.startsWith("video/");
     return new NextResponse(data, {
       headers: {
         "Content-Type": mime,
+        // Without this a browser may sniff past the declared type and run it.
+        "X-Content-Type-Options": "nosniff",
+        "Content-Disposition": inline ? "inline" : "attachment",
         "Cache-Control": "private, max-age=3600",
       },
     });
