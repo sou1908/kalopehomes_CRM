@@ -618,6 +618,43 @@ export function formatJourneyValue(
   }).format(d);
 }
 
+/**
+ * A stage answer in one short phrase, for the activity timeline.
+ *
+ * Tables and checklists are summarised rather than spelled out — the timeline
+ * should say a measurement was taken, not reprint five columns. The journey
+ * panel is where the detail lives.
+ */
+export function describeJourneyValue(
+  field: JourneyField,
+  raw: string,
+): string | null {
+  const v = (raw ?? "").trim();
+  if (v === "" || v === "[]") return null;
+
+  if (field.type === "checklist") {
+    const checks = parseJourneyChecks(v);
+    const n = (st: CheckStatus) => checks.filter((c) => c.status === st).length;
+    const no = checks.filter((c) => c.status === "no").map((c) => c.item);
+    const head = `${n("yes")} yes · ${n("no")} no`;
+    return no.length > 0 ? `${head} (no: ${no.join(", ")})` : head;
+  }
+
+  if (field.type === "sections") {
+    const secs = parseJourneySections(v);
+    if (secs.length === 0) return null;
+    return secs.map((x) => x.name).join(", ");
+  }
+
+  if (field.type === "rows") {
+    const rows = parseJourneyRows(v);
+    if (rows.length === 0) return null;
+    return `${rows.length} row${rows.length === 1 ? "" : "s"}`;
+  }
+
+  return formatJourneyValue(v, field.type);
+}
+
 // Outcomes for a logged call.
 export const CALL_OUTCOMES: string[] = [
   "Connected",

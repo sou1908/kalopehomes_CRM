@@ -54,6 +54,7 @@ import {
   CALL_OUTCOMES,
   fieldsForStage,
   scheduleFieldOf,
+  describeJourneyValue,
 } from "@/lib/leads-shared";
 
 // Telecallers (L1), field agents (L2) and the Lead Manager all work leads.
@@ -538,61 +539,76 @@ export async function addActivityAction(
   const kindRaw = String(formData.get("kind") ?? "note") as ActivityKind;
   const kind = ACTIVITY_KINDS.includes(kindRaw) ? kindRaw : "note";
   const body = String(formData.get("body") ?? "").trim();
+  const visibility = formData.get("private") != null ? "private" : "public";
 
-  // Call outcome is required for calls; the remark (body) is optional there.
+  // ── Whatever the stage asked for, filled in alongside the note ──
+  const stage = lead.stageId ? await getStage(lead.stageId, user.orgId) : null;
+  const stageFields = stage ? fieldsForStage(stage, "") : [];
+  const stageKeys = String(formData.get("fieldKeys") ?? "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+
+  const values: Record<string, string> = {};
+  for (const k of stageKeys) {
+    const v = String(formData.get(`f_${k}`) ?? "").trim();
+    if (v && v !== "[]") values[k] = v;
+  }
+
+  // Each answer in a phrase, so the timeline shows what was recorded rather
+  // than leaving it only in the journey, which keeps no history.
+  const recorded = Object.entries(values)
+    .map(([key, raw]) => {
+      const field = stageFields.find((f) => f.key === key);
+      if (!field) return null;
+      const said = describeJourneyValue(field, raw);
+      return said ? `${field.label}: ${said}` : null;
+    })
+    .filter((x): x is string => x !== null);
+
+  // A call needs its outcome; the remark is optional there. For anything else,
+  // filling in the stage counts as saying something — being made to write a
+  // note as well is busywork.
   let outcome: string | null = null;
   if (kind === "call") {
     const oc = String(formData.get("outcome") ?? "").trim();
     outcome = CALL_OUTCOMES.includes(oc) ? oc : CALL_OUTCOMES[0];
-  } else if (!body) {
-    return { error: "Write something first." };
+  } else if (!body && recorded.length === 0) {
+    return { error: "Write a note, or fill in something below." };
   }
 
-  const visibility = formData.get("private") != null ? "private" : "public";
+  const summary = recorded.length > 0 ? `Recorded — ${recorded.join(" · ")}` : "";
+  const finalBody = [body, summary].filter(Boolean).join("\n");
 
   await logActivity({
     orgId: user.orgId,
     leadId,
     actor: { userId: user.id, name: user.name },
     kind,
-    body,
+    body: finalBody,
     outcome,
     visibility,
   });
-  // The composer carries the current stage's questions, so whatever was filled
-  // in is saved against the journey in the same submit — one action for the
-  // caller, structured data for whoever picks the lead up next.
-  const stageKeys = String(formData.get("fieldKeys") ?? "")
-    .split(",")
-    .map((k) => k.trim())
-    .filter(Boolean);
-  if (stageKeys.length > 0 && lead.pipelineId) {
-    const values: Record<string, string> = {};
-    for (const k of stageKeys) {
-      const v = String(formData.get(`f_${k}`) ?? "").trim();
-      if (v) values[k] = v;
-    }
-    if (Object.keys(values).length > 0) {
-      await saveJourneyStep({
-        leadId,
-        orgId: user.orgId,
-        pipelineId: lead.pipelineId,
-        values,
-        complete: false,
-        actor: { userId: user.id, name: user.name },
-      });
 
-      // A stage can ask for an appointment — a revisit, a site visit. That's a
-      // commitment someone has to turn up for, so it becomes the lead's
-      // follow-up: it then surfaces in Needs attention and goes overdue if the
-      // day passes, which is the whole point of booking it.
-      const stage = lead.stageId ? await getStage(lead.stageId, user.orgId) : null;
-      const appointment = scheduleFieldOf(fieldsForStage(stage, ""));
-      const when = appointment ? values[appointment.key] : undefined;
-      if (when) {
-        const at = parseDate(when);
-        if (at) await setLeadFollowUp(leadId, user.orgId, at);
-      }
+  if (Object.keys(values).length > 0 && lead.pipelineId) {
+    await saveJourneyStep({
+      leadId,
+      orgId: user.orgId,
+      pipelineId: lead.pipelineId,
+      values,
+      complete: false,
+      actor: { userId: user.id, name: user.name },
+    });
+
+    // A stage can ask for an appointment — a revisit, a site visit. That's a
+    // commitment someone has to turn up for, so it becomes the lead's
+    // follow-up: it then surfaces in Needs attention and goes overdue if the
+    // day passes, which is the whole point of booking it.
+    const appointment = scheduleFieldOf(stageFields);
+    const when = appointment ? values[appointment.key] : undefined;
+    if (when) {
+      const at = parseDate(when);
+      if (at) await setLeadFollowUp(leadId, user.orgId, at);
     }
   }
 
