@@ -78,7 +78,10 @@ export default async function LeadsHomePage({
   }
 
   return (
-    <div className="px-4 pb-6 pt-3 sm:px-8">
+    // A column of full height, so the board below can absorb what's left and
+    // its scrollbar lands at the bottom of the window rather than tucked under
+    // the cards. The 4rem is the utility strip above — the only fixed part.
+    <div className="flex min-h-[calc(100vh-4rem)] flex-col px-4 pb-3 pt-3 sm:px-8">
       <div className="mb-7 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
@@ -158,7 +161,7 @@ export default async function LeadsHomePage({
           </p>
         </div>
       ) : (
-        <div className="mt-4 flex gap-4 overflow-x-auto pb-3">
+        <div className="mt-4 flex min-h-0 flex-1 gap-4 overflow-x-auto pb-2">
           {/* The scrollbar stays visible here. Hiding it was fine at four
               columns; at seven the last ones sit off-screen with nothing to
               say they exist, and a board you cannot tell scrolls reads as a
