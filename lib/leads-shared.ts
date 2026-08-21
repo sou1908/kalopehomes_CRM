@@ -598,6 +598,37 @@ export function formatFollowUp(
   }).format(at);
 }
 
+/**
+ * When a lead arrived, as short as it can be while still being clear.
+ *
+ * "Today" and "Yesterday" rather than a date, because on a board the question
+ * is almost always "is this fresh?" — and a caller reading a column of dates
+ * has to work that out for every card. The year only appears once it isn't
+ * this one, so the common case stays two words wide.
+ *
+ * `now` is passed in rather than read, so the server and the browser can't
+ * disagree about what "today" means and produce a hydration mismatch.
+ */
+export function formatAdded(
+  at: Date | null | undefined,
+  now: number,
+): string | null {
+  if (!at) return null;
+
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((startOfDay(new Date(now)) - startOfDay(at)) / 86_400_000);
+
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    ...(at.getFullYear() !== new Date(now).getFullYear() ? { year: "2-digit" } : {}),
+  }).format(at);
+}
+
 /** Renders a captured journey answer — dates read as dates, not raw strings. */
 export function formatJourneyValue(
   value: string,

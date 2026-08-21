@@ -11,6 +11,7 @@ import {
   summarize,
   followUpState,
   formatFollowUp,
+  formatAdded,
   type PipelineInfo,
   type LeadStageInfo,
   type LeadTagInfo,
@@ -292,6 +293,7 @@ function LeadCard({
     pipelineId: string | null;
     estimatedValue: number | null;
     followUpAt: Date | null;
+    createdAt: Date | null;
   };
   stages: LeadStageInfo[];
   tags: LeadTagInfo[];
@@ -304,6 +306,7 @@ function LeadCard({
   const fu = followUpState(lead.followUpAt, now);
   const due = fu === "overdue" || fu === "soon";
   const fuFmt = formatFollowUp(lead.followUpAt);
+  const added = formatAdded(lead.createdAt, now);
 
   return (
     // A due or overdue lead gets a coloured spine down its edge. Whoever is
@@ -329,6 +332,18 @@ function LeadCard({
         {value && (
           <span className="ml-auto shrink-0 font-mono text-[11px] tabular-nums text-text">
             {value}
+          </span>
+        )}
+        {/* When it arrived. Quieter than the value and pushed to the far edge,
+            so a column of cards reads as one date column you can scan. */}
+        {added && (
+          <span
+            className={`shrink-0 font-mono text-[10px] tabular-nums text-muted ${
+              value ? "" : "ml-auto"
+            }`}
+            title={`Added ${lead.createdAt?.toLocaleString("en-IN") ?? ""}`}
+          >
+            {added}
           </span>
         )}
       </div>
