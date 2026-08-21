@@ -12,6 +12,7 @@ import {
   followUpState,
   formatFollowUp,
   formatAdded,
+  inDateRange,
   type PipelineInfo,
   type LeadStageInfo,
   type LeadTagInfo,
@@ -20,43 +21,6 @@ import { StageMenu } from "./_components/stage-menu";
 import { PipelineMeter } from "./_components/pipeline-meter";
 import { Icon } from "@/app/_components/icons";
 import { DateRangeFilter } from "./_components/date-range-filter";
-
-/**
- * Is this lead inside the chosen window? Either end may be omitted.
- *
- * The bounds are built from the date's parts rather than parsed from the
- * string, because `new Date("2026-06-09")` is UTC midnight — which in IST is
- * 5:30am on the 9th, so a lead added at 3am that morning would fall outside a
- * range that plainly includes its date. Same trap as the follow-up bug.
- *
- * `to` is inclusive: picking the 9th means the whole of the 9th.
- */
-function inDateRange(
-  createdAt: Date | null,
-  from?: string,
-  to?: string,
-): boolean {
-  if (!from && !to) return true;
-  if (!createdAt) return false;
-
-  const parts = (s: string) => {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
-    return m ? { y: +m[1], mo: +m[2] - 1, d: +m[3] } : null;
-  };
-
-  if (from) {
-    const p = parts(from);
-    if (p && createdAt.getTime() < new Date(p.y, p.mo, p.d).getTime()) return false;
-  }
-  if (to) {
-    const p = parts(to);
-    // Start of the following day, so the whole of `to` counts.
-    if (p && createdAt.getTime() >= new Date(p.y, p.mo, p.d + 1).getTime()) {
-      return false;
-    }
-  }
-  return true;
-}
 
 export default async function LeadsHomePage({
   searchParams,

@@ -15,6 +15,8 @@ import {
   followUpState,
   formatFollowUp,
   telHref,
+  whatsappHref,
+  inDateRange,
 } from "@/lib/leads-shared";
 import { initials, colorFromName } from "@/lib/avatar";
 import { StageMenu } from "../_components/stage-menu";
@@ -22,6 +24,7 @@ import { Icon } from "@/app/_components/icons";
 // TEMPORARY — testing only, remove before launch.
 import { DangerZone } from "../_components/danger-zone";
 import { ColumnFilter } from "./_components/column-filter";
+import { DateRangeFilter } from "../_components/date-range-filter";
 
 export default async function AllLeadsPage({
   searchParams,
@@ -36,19 +39,24 @@ export default async function AllLeadsPage({
     // Per-column filters (the funnel on each heading).
     name?: string;
     contact?: string;
+    city?: string;
     vmin?: string;
     vmax?: string;
     fu?: string;
+    // Added-between, from the header.
+    from?: string;
+    to?: string;
   }>;
 }) {
   const user = await requireRole(["telecaller", "site_agent", "admin"]);
   const orgId = user.orgId ?? "";
   const sp = await searchParams;
-  const { stage, tag, q, filter, owner, pipeline } = sp;
+  const { stage, tag, q, filter, owner, pipeline, from, to } = sp;
   const query = (q ?? "").trim().toLowerCase();
 
   // Column filters
   const nameQ = (sp.name ?? "").trim().toLowerCase();
+  const cityQ = (sp.city ?? "").trim().toLowerCase();
   const contactQ = (sp.contact ?? "").trim().toLowerCase();
   const vmin = sp.vmin && sp.vmin.trim() !== "" ? Number(sp.vmin) : null;
   const vmax = sp.vmax && sp.vmax.trim() !== "" ? Number(sp.vmax) : null;
@@ -91,9 +99,32 @@ export default async function AllLeadsPage({
   const tagged = activeTag ? await leadIdsWithTag(activeTag.id) : null;
   const now = Date.now();
 
+  // Cities as they actually appear on leads, most-used first, so the filter can
+  // never offer a place with nothing in it. Grouped case-insensitively but
+  // labelled with the spelling first seen, since imported rows arrive as
+  // "Patna", "patna" and "PATNA" and those are one city, not three.
+  const cityOptions = (() => {
+    const seen = new Map<string, { label: string; count: number }>();
+    for (const l of all) {
+      const name = (l.city ?? "").trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      const found = seen.get(key);
+      if (found) found.count += 1;
+      else seen.set(key, { label: name, count: 1 });
+    }
+    return [...seen.entries()]
+      .sort((a, b) => b[1].count - a[1].count || a[1].label.localeCompare(b[1].label))
+      .map(([key, v]) => ({ value: key, label: v.label, count: v.count }));
+  })();
+
   let leads = all;
   if (ownerId) leads = leads.filter((l) => isAssigned(l.id, ownerId));
   if (activePipeline) leads = leads.filter((l) => l.pipelineId === activePipeline.id);
+  // Matched case-insensitively for the same reason the options are grouped.
+  if (cityQ) leads = leads.filter((l) => (l.city ?? "").trim().toLowerCase() === cityQ);
+  // Added between two dates — the same filter the board header carries.
+  if (from || to) leads = leads.filter((l) => inDateRange(l.createdAt, from, to));
   if (activeStage) leads = leads.filter((l) => l.stageId === activeStage.id);
   if (tagged) leads = leads.filter((l) => tagged.has(l.id));
   if (attention)
@@ -137,7 +168,9 @@ export default async function AllLeadsPage({
 
   return (
     <div className="px-4 py-6 sm:px-8">
-      <div className="mb-4 flex items-center justify-between">
+      {/* Wraps, so on a narrow window the controls drop below the title
+          instead of squeezing the date fields into unusable slivers. */}
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
         <div>
           <div className="text-xs uppercase tracking-wide text-muted">
             Lead manager
@@ -152,17 +185,26 @@ export default async function AllLeadsPage({
                 : "All leads"}
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        {/* items-end, not items-center: the date filter is taller than a plain
+            button because its fields carry labels, and centring against that
+            floats everything beside it above the input line. */}
+        <div className="flex items-end gap-2">
           {/* ⚠️ TEMPORARY — testing only. Remove this, the import above,
               app/leads/_components/danger-zone.tsx, deleteAllLeadsAction in
               app/leads/actions.ts, and lib/danger.ts before launch. */}
           {user.roles.includes("admin") && <DangerZone count={everyLead.length} />}
-          <Link
-            href="/leads"
-            className="rounded-md border border-border px-3 py-1.5 text-xs text-muted hover:text-text"
-          >
-            ◫ Board view
-          </Link>
+          {/* Board view lived here; the sidebar's "Pipeline" already goes
+              there. This does something the list could not do at all. Carries
+              every other filter, so narrowing by date keeps your stage, tag and
+              search intact. */}
+          <DateRangeFilter
+            from={from}
+            to={to}
+            action="/leads/all"
+            carry={Object.fromEntries(
+              Object.entries(allParams).filter(([k]) => k !== "from" && k !== "to"),
+            )}
+          />
         </div>
       </div>
 
@@ -286,6 +328,7 @@ export default async function AllLeadsPage({
             const stage = stages.find((s) => s.id === lead.stageId) ?? null;
             const pipeline = lead.pipelineId ? pipelineById.get(lead.pipelineId) : null;
             const dial = telHref(lead.phone);
+            const wa = whatsappHref(lead.phone);
             return (
               <li key={lead.id} className="flex items-start gap-3 p-3">
                 <div className="min-w-0 flex-1">
@@ -330,16 +373,31 @@ export default async function AllLeadsPage({
                   </div>
                 </div>
 
-                {/* 44px target — this is the whole reason to open the CRM on a phone. */}
-                {dial && (
-                  <a
-                    href={dial}
-                    aria-label={`Call ${lead.name} on ${lead.phone}`}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border text-accentInk transition-colors active:bg-elevated"
-                  >
-                    <Icon name="phone" size={17} />
-                  </a>
-                )}
+                {/* 44px targets — this is the whole reason to open the CRM on a
+                    phone. WhatsApp sits beside the dialler because on a handset
+                    it is just as likely to be the thing you reach for. */}
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {dial && (
+                    <a
+                      href={dial}
+                      aria-label={`Call ${lead.name} on ${lead.phone}`}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border text-accentInk transition-colors active:bg-elevated"
+                    >
+                      <Icon name="phone" size={17} />
+                    </a>
+                  )}
+                  {wa && (
+                    <a
+                      href={wa}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`WhatsApp ${lead.name} on ${lead.phone}`}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border text-success transition-colors active:bg-elevated"
+                    >
+                      <Icon name="whatsapp" size={17} />
+                    </a>
+                  )}
+                </div>
               </li>
             );
           })}
@@ -395,20 +453,20 @@ export default async function AllLeadsPage({
                       />
                     </span>
                   </th>
+                  {/* City replaces the Pipeline column. Which pipeline a lead
+                      sits in is already on the chips above and in its Stage;
+                      where the work is was not shown anywhere. Built from the
+                      cities actually present, so it can't list a place you have
+                      no leads in. */}
                   <th className="hidden px-4 py-2.5 font-medium md:table-cell">
                     <span className="inline-flex items-center gap-1.5">
-                      Pipeline
+                      City
                       <ColumnFilter
                         kind="choice"
-                        label="Pipeline"
-                        param="pipeline"
+                        label="City"
+                        param="city"
                         params={allParams}
-                        options={pipelines.map((d) => ({
-                          value: d.id,
-                          label: d.name,
-                          color: d.color,
-                          count: all.filter((l) => l.pipelineId === d.id).length,
-                        }))}
+                        options={cityOptions}
                       />
                     </span>
                   </th>
@@ -511,13 +569,30 @@ export default async function AllLeadsPage({
                         {/* Dialable: a telecaller works this column all day, and
                             copying a number out to a phone is the slow part. */}
                         {telHref(lead.phone) ? (
-                          <a
-                            href={telHref(lead.phone)!}
-                            className="font-mono text-accentInk transition-colors hover:underline"
-                            title={`Call ${lead.name}`}
-                          >
-                            {lead.phone}
-                          </a>
+                          <span className="inline-flex items-center gap-2">
+                            <a
+                              href={telHref(lead.phone)!}
+                              className="font-mono text-accentInk transition-colors hover:underline"
+                              title={`Call ${lead.name}`}
+                            >
+                              {lead.phone}
+                            </a>
+                            {/* WhatsApp is how most of these conversations
+                                actually happen, so it sits beside the number
+                                rather than behind the lead detail page. */}
+                            {whatsappHref(lead.phone) && (
+                              <a
+                                href={whatsappHref(lead.phone)!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={`WhatsApp ${lead.name}`}
+                                aria-label={`WhatsApp ${lead.name}`}
+                                className="shrink-0 text-muted transition-colors hover:text-success"
+                              >
+                                <Icon name="whatsapp" size={15} />
+                              </a>
+                            )}
+                          </span>
                         ) : lead.email ? (
                           <a
                             href={`mailto:${lead.email}`}
@@ -558,14 +633,8 @@ export default async function AllLeadsPage({
                         })()}
                       </td>
                       <td className="hidden px-4 py-3 md:table-cell">
-                        {lead.pipelineId && pipelineById.has(lead.pipelineId) ? (
-                          <span className="inline-flex items-center gap-1.5 text-muted">
-                            <span
-                              className="inline-block h-1.5 w-1.5 rounded-full"
-                              style={{ background: pipelineById.get(lead.pipelineId)!.color }}
-                            />
-                            {pipelineById.get(lead.pipelineId)!.name}
-                          </span>
+                        {lead.city ? (
+                          <span className="text-muted">{lead.city}</span>
                         ) : (
                           <span className="text-muted">—</span>
                         )}

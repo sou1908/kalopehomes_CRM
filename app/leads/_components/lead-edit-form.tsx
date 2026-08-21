@@ -3,7 +3,12 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateLeadAction } from "../actions";
-import { LEAD_SOURCES, LEAD_PURPOSES } from "@/lib/leads-shared";
+import {
+  LEAD_SOURCES,
+  LEAD_PURPOSES,
+  LEAD_CITIES,
+  LEAD_STATES,
+} from "@/lib/leads-shared";
 import { SelectOrOther } from "./select-or-other";
 import type { Lead } from "@/lib/db/schema";
 
@@ -150,14 +155,21 @@ export function LeadDetails({ lead }: { lead: Lead }) {
                   />
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="label" htmlFor="le-city">City</label>
-                    <input id="le-city" name="city" defaultValue={lead.city ?? ""} className="input text-sm" />
-                  </div>
-                  <div>
-                    <label className="label" htmlFor="le-state">State</label>
-                    <input id="le-state" name="state" defaultValue={lead.state ?? ""} className="input text-sm" />
-                  </div>
+                  {/* A value already stored that isn't in the list — anything
+                      the CSV import brought in — selects Other and appears in
+                      the text box, so editing a lead never silently loses it. */}
+                  <SelectOrOther
+                    name="city"
+                    label="City"
+                    options={LEAD_CITIES}
+                    defaultValue={lead.city}
+                  />
+                  <SelectOrOther
+                    name="state"
+                    label="State"
+                    options={LEAD_STATES}
+                    defaultValue={lead.state}
+                  />
                   <div>
                     <label className="label" htmlFor="le-pincode">PIN code</label>
                     <input

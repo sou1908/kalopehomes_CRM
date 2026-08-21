@@ -27,7 +27,8 @@ export type IconName =
   | "upload"
   | "search"
   | "funnel"
-  | "phone";
+  | "phone"
+  | "whatsapp";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   // Three columns — the pipeline board.
@@ -105,6 +106,15 @@ const PATHS: Record<IconName, React.ReactNode> = {
   funnel: <path d="M4 5h16l-6.2 7.4v5.4l-3.6 1.8v-7.2L4 5Z" />,
   phone: (
     <path d="M7.6 4.5h-2A1.6 1.6 0 0 0 4 6.2c0 7.6 6.2 13.8 13.8 13.8a1.6 1.6 0 0 0 1.7-1.6v-2a1.2 1.2 0 0 0-1-1.2l-2.6-.5a1.2 1.2 0 0 0-1.2.5l-.8 1.1a11.6 11.6 0 0 1-5.7-5.7l1.1-.8a1.2 1.2 0 0 0 .5-1.2l-.5-2.6a1.2 1.2 0 0 0-1.2-1Z" />
+  ),
+  // The WhatsApp mark, drawn in strokes to sit with the rest of the set rather
+  // than pasted in as a filled brand logo. Bubble with its tail, and the same
+  // handset as `phone` scaled to fit inside it.
+  whatsapp: (
+    <>
+      <path d="M12 3.75a8.25 8.25 0 0 0-7.06 12.57L3.75 20.25l3.99-1.12A8.25 8.25 0 1 0 12 3.75Z" />
+      <path d="M9.9 9.05h-.6a1 1 0 0 0-1 1c0 2.9 2.35 5.25 5.25 5.25a1 1 0 0 0 1-1v-.6a.7.7 0 0 0-.6-.7l-1.15-.2a.7.7 0 0 0-.7.3l-.3.42a6.6 6.6 0 0 1-2.5-2.5l.42-.3a.7.7 0 0 0 .3-.7l-.2-1.15a.7.7 0 0 0-.7-.6Z" />
+    </>
   ),
 };
 

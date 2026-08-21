@@ -85,5 +85,10 @@ export async function updatePresenceAction(formData: FormData) {
     if (!user.roles.includes("admin")) return;
     await setMemberPresence(user.orgId, targetUserId, presence);
   }
-  revalidatePath("/leads/team");
+  // The whole /leads layout, not just the team page: the status picker lives in
+  // the user menu in app/leads/layout.tsx, which wraps every page under /leads,
+  // and the roster and sidebar show presence too. Revalidating only /leads/team
+  // left the page you were actually on serving the old value — so the menu
+  // snapped back to the previous status a moment after you picked a new one.
+  revalidatePath("/leads", "layout");
 }

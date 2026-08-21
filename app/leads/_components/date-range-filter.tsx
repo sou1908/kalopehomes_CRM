@@ -20,16 +20,19 @@ export function DateRangeFilter({
   from,
   to,
   carry = {},
+  action = "/leads",
 }: {
   from?: string;
   to?: string;
   /** Other search params to preserve, as hidden fields. */
   carry?: Record<string, string>;
+  /** Where the form submits — the page it filters. */
+  action?: string;
 }) {
   const active = Boolean(from || to);
 
   return (
-    <form method="get" action="/leads" className="flex items-end gap-1.5">
+    <form method="get" action={action} className="flex items-end gap-1.5">
       {Object.entries(carry).map(([key, value]) => (
         <input key={key} type="hidden" name={key} value={value} />
       ))}
@@ -73,8 +76,8 @@ export function DateRangeFilter({
         <Link
           href={
             Object.keys(carry).length > 0
-              ? `/leads?${new URLSearchParams(carry).toString()}`
-              : "/leads"
+              ? `${action}?${new URLSearchParams(carry).toString()}`
+              : action
           }
           title="Clear date range"
           aria-label="Clear date range"

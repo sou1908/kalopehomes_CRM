@@ -580,6 +580,76 @@ export function telHref(phone: string | null | undefined): string | null {
 }
 
 /**
+ * Is this lead inside the chosen window? Either end may be omitted.
+ *
+ * The bounds are built from the date's parts rather than parsed from the
+ * string, because `new Date("2026-06-09")` is UTC midnight — which in IST is
+ * 5:30am on the 9th, so a lead added at 3am that morning would fall outside a
+ * range that plainly includes its date. Same trap as the follow-up bug.
+ *
+ * `to` is inclusive: picking the 9th means the whole of the 9th.
+ */
+export function inDateRange(
+  createdAt: Date | null,
+  from?: string,
+  to?: string,
+): boolean {
+  if (!from && !to) return true;
+  if (!createdAt) return false;
+
+  const parts = (s: string) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
+    return m ? { y: +m[1], mo: +m[2] - 1, d: +m[3] } : null;
+  };
+
+  if (from) {
+    const p = parts(from);
+    if (p && createdAt.getTime() < new Date(p.y, p.mo, p.d).getTime()) return false;
+  }
+  if (to) {
+    const p = parts(to);
+    // Start of the following day, so the whole of `to` counts.
+    if (p && createdAt.getTime() >= new Date(p.y, p.mo, p.d + 1).getTime()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Assumed when a number carries no country code. India. */
+const DEFAULT_COUNTRY_CODE = "91";
+
+/**
+ * A wa.me link that opens the chat with this number.
+ *
+ * wa.me needs digits only, with a country code and no `+`. Numbers reach us
+ * from CSV dumps in every shape, so the common Indian forms are normalised:
+ *
+ *   9876543210      -> 919876543210   (bare 10-digit mobile)
+ *   09876543210     -> 919876543210   (trunk zero dropped)
+ *   +91 98765 43210 -> 919876543210   (already international)
+ *
+ * A number that already starts with a country code is left alone. Anything too
+ * short to be a real number returns null, so the button simply isn't offered
+ * rather than opening WhatsApp on nonsense.
+ */
+export function whatsappHref(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const trimmed = phone.trim();
+  let digits = trimmed.replace(/\D/g, "");
+
+  // A leading + means the country code is already there.
+  if (!trimmed.startsWith("+")) {
+    // Trunk prefix used when dialling domestically; wa.me does not want it.
+    if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+    if (digits.length === 10) digits = DEFAULT_COUNTRY_CODE + digits;
+  }
+
+  if (digits.length < 10) return null;
+  return `https://wa.me/${digits}`;
+}
+
+/**
  * A follow-up as it should read. Midnight means the date was set without a
  * time, so the time is left off rather than shown as a misleading "12:00 am" —
  * "call after 6pm" and "sometime on the 9th" are different promises.
@@ -726,9 +796,30 @@ export const LEAD_PURPOSES: string[] = [
   "Other",
 ];
 
+/**
+ * Cities offered in the City dropdown.
+ *
+ * Deliberately short: these are where the work actually is, so a telecaller
+ * picks rather than types, and "Patna" stops arriving as patna / PATNA / Patna.
+ * — three spellings the filters would treat as three different places.
+ *
+ * Anything else goes through "Other", which opens a free text box. Add a city
+ * here once it becomes regular enough to be worth a click.
+ */
+export const LEAD_CITIES: string[] = ["Patna", "Bihar Sharif", "Other"];
+
+/**
+ * States offered in the State dropdown. Same reasoning as the cities: the one
+ * you actually work in, and a way out for anything else.
+ */
+export const LEAD_STATES: string[] = ["Bihar", "Other"];
+
 // Common lead sources offered in the Source dropdown.
 export const LEAD_SOURCES: string[] = [
   "Referral",
+  // Someone who rang in themselves — near the top because it is one of the
+  // warmest ways a lead arrives, and worth telling apart from cold outreach.
+  "Direct call",
   "Website",
   "Social media",
   "Cold outreach",

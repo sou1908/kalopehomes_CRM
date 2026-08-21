@@ -4,7 +4,13 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createLeadAction } from "../actions";
-import { LEAD_SOURCES, LEAD_PURPOSES, type LeadStageInfo } from "@/lib/leads-shared";
+import {
+  LEAD_SOURCES,
+  LEAD_PURPOSES,
+  LEAD_CITIES,
+  LEAD_STATES,
+  type LeadStageInfo,
+} from "@/lib/leads-shared";
 import { SelectOrOther } from "./select-or-other";
 
 export function LeadComposer({
@@ -116,14 +122,11 @@ export function LeadComposer({
                   />
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="label" htmlFor="lc-city">City</label>
-                    <input id="lc-city" name="city" className="input text-sm" />
-                  </div>
-                  <div>
-                    <label className="label" htmlFor="lc-state">State</label>
-                    <input id="lc-state" name="state" className="input text-sm" />
-                  </div>
+                  {/* Picked, not typed — the same free-text field produced
+                      patna, Patna and PATNA, which a city filter reads as three
+                      different places. "Other" still opens a text box. */}
+                  <SelectOrOther name="city" label="City" options={LEAD_CITIES} />
+                  <SelectOrOther name="state" label="State" options={LEAD_STATES} />
                   <div>
                     <label className="label" htmlFor="lc-pincode">PIN code</label>
                     <input id="lc-pincode" name="pincode" inputMode="numeric" className="input text-sm" />

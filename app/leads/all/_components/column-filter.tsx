@@ -52,6 +52,13 @@ export function ColumnFilter(props: Props) {
   const [query, setQuery] = useState("");
   const router = useRouter();
   const firstFieldRef = useRef<HTMLInputElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({
+    // Off-screen until measured, so it can't flash in the wrong place.
+    top: -9999,
+    left: -9999,
+  });
 
   const active = useMemo(() => {
     if (props.kind === "range")
@@ -59,8 +66,39 @@ export function ColumnFilter(props: Props) {
     return Boolean(params[props.param]);
   }, [params, props]);
 
+  /**
+   * Put the panel under its button, in viewport coordinates.
+   *
+   * Kept on screen at both edges: a filter on the last column would otherwise
+   * hang off the right, and one near the bottom would run past the fold. If it
+   * won't fit below, it flips above the button.
+   */
   useEffect(() => {
     if (!open) return;
+
+    const place = () => {
+      const b = buttonRef.current?.getBoundingClientRect();
+      if (!b) return;
+      const width = 240; // w-60
+      const height = panelRef.current?.offsetHeight ?? 320;
+      const margin = 8;
+
+      let left = align === "end" ? b.right - width : b.left;
+      left = Math.min(Math.max(margin, left), window.innerWidth - width - margin);
+
+      const below = b.bottom + 6;
+      const flip = below + height > window.innerHeight - margin && b.top > height;
+      const top = flip ? b.top - height - 6 : below;
+
+      setPanelStyle({ top, left, maxHeight: window.innerHeight - top - margin });
+    };
+
+    place();
+    // The button moves when the table scrolls sideways or the window resizes;
+    // `true` catches scrolls on the table's own container, not just the page.
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
@@ -69,9 +107,11 @@ export function ColumnFilter(props: Props) {
     const t = setTimeout(() => firstFieldRef.current?.focus(), 0);
     return () => {
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
       clearTimeout(t);
     };
-  }, [open]);
+  }, [open, align]);
 
   /** Current URL with some params changed. Empty string or null removes one. */
   const hrefWith = (changes: Record<string, string | null>) => {
@@ -92,6 +132,7 @@ export function ColumnFilter(props: Props) {
   return (
     <span className="relative inline-flex">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => {
           setOpen((o) => !o);
@@ -118,10 +159,18 @@ export function ColumnFilter(props: Props) {
             onClick={() => setOpen(false)}
             aria-hidden
           />
+          {/* Fixed, not absolute, and placed from the button's real screen
+              position.
+
+              The table scrolls sideways inside overflow-x-auto, and CSS turns
+              that into overflow-y: auto as well — so an absolutely positioned
+              panel gets clipped by the table's own edge and only part of the
+              list is reachable. Taking it out of that box is the only reliable
+              fix short of a portal. */}
           <div
-            className={`absolute top-7 z-50 w-60 rounded-lg border border-border bg-panel p-2 text-left shadow-xl ${
-              align === "end" ? "right-0" : "left-0"
-            }`}
+            ref={panelRef}
+            style={panelStyle}
+            className="fixed z-50 w-60 overflow-y-auto rounded-lg border border-border bg-panel p-2 text-left shadow-xl"
           >
             {props.kind === "text" && (
               <TextFilter
