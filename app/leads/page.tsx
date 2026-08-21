@@ -19,15 +19,53 @@ import {
 import { StageMenu } from "./_components/stage-menu";
 import { PipelineMeter } from "./_components/pipeline-meter";
 import { Icon } from "@/app/_components/icons";
+import { DateRangeFilter } from "./_components/date-range-filter";
+
+/**
+ * Is this lead inside the chosen window? Either end may be omitted.
+ *
+ * The bounds are built from the date's parts rather than parsed from the
+ * string, because `new Date("2026-06-09")` is UTC midnight — which in IST is
+ * 5:30am on the 9th, so a lead added at 3am that morning would fall outside a
+ * range that plainly includes its date. Same trap as the follow-up bug.
+ *
+ * `to` is inclusive: picking the 9th means the whole of the 9th.
+ */
+function inDateRange(
+  createdAt: Date | null,
+  from?: string,
+  to?: string,
+): boolean {
+  if (!from && !to) return true;
+  if (!createdAt) return false;
+
+  const parts = (s: string) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
+    return m ? { y: +m[1], mo: +m[2] - 1, d: +m[3] } : null;
+  };
+
+  if (from) {
+    const p = parts(from);
+    if (p && createdAt.getTime() < new Date(p.y, p.mo, p.d).getTime()) return false;
+  }
+  if (to) {
+    const p = parts(to);
+    // Start of the following day, so the whole of `to` counts.
+    if (p && createdAt.getTime() >= new Date(p.y, p.mo, p.d + 1).getTime()) {
+      return false;
+    }
+  }
+  return true;
+}
 
 export default async function LeadsHomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ pipeline?: string }>;
+  searchParams: Promise<{ pipeline?: string; from?: string; to?: string }>;
 }) {
   const user = await requireRole(["telecaller", "site_agent", "admin", "operation_manager"]);
   const orgId = user.orgId ?? "";
-  const { pipeline: wanted } = await searchParams;
+  const { pipeline: wanted, from, to } = await searchParams;
 
   const [allLeads, allStages, allPipelines] = await Promise.all([
     orgId ? listLeads(orgId) : Promise.resolve([]),
@@ -56,8 +94,14 @@ export default async function LeadsHomePage({
   const handedOn = allLeads.filter(
     (l) => handedOnSet.has(l.id) && l.pipelineId !== active?.id,
   );
-  const leads = [...inPipeline, ...handedOn];
+  const allForPipeline = [...inPipeline, ...handedOn];
+
+  // Narrow to leads added inside the chosen dates. Applied to both the live and
+  // the handed-on lists, so a filtered board is a straight answer to "what came
+  // in during that window" rather than a partial one.
+  const leads = allForPipeline.filter((l) => inDateRange(l.createdAt, from, to));
   const movedOn = new Set(handedOn.map((l) => l.id));
+  const hiddenByDate = allForPipeline.length - leads.length;
 
   const tagsByLead = await tagsForLeads(leads.map((l) => l.id));
   const stats = summarize(leads, stages);
@@ -146,28 +190,39 @@ export default async function LeadsHomePage({
               tone="text-accentInk"
             />
           </div>
+          {/* The Stages and List view buttons used to sit here. Both are in the
+              sidebar already — "All leads", and the gear on the Stages section —
+              so this space goes to something the board could not do at all. */}
           <div className="flex items-center gap-1.5">
-            {user.roles.includes("admin") && (
-              <Link
-                href="/leads/stages"
-                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-accent/50 hover:text-text"
-              >
-                <Icon name="sliders" size={14} />
-                Stages
-              </Link>
-            )}
-            <Link
-              href="/leads/all"
-              className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-accent/50 hover:text-text"
-            >
-              <Icon name="list" size={14} />
-              List view
-            </Link>
+            <DateRangeFilter
+              from={from}
+              to={to}
+              carry={active ? { pipeline: active.id } : {}}
+            />
           </div>
         </div>
       </div>
 
-      {leads.length === 0 ? (
+      {leads.length === 0 && hiddenByDate > 0 ? (
+        // Filtered to nothing. Saying "No leads yet" here would be a lie, and
+        // the way out has to be offered rather than left to the back button.
+        <div className="card mt-2 px-6 py-14 text-center">
+          <h2 className="font-display text-xl font-medium">
+            Nothing added in that range
+          </h2>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
+            {hiddenByDate} lead{hiddenByDate === 1 ? " is" : "s are"} hidden by the
+            date filter. Widen the dates, or clear them to see everything again.
+          </p>
+          <Link
+            href={active ? `/leads?pipeline=${active.id}` : "/leads"}
+            className="mt-5 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:border-accent/50 hover:text-text"
+          >
+            <Icon name="close" size={13} />
+            Clear date filter
+          </Link>
+        </div>
+      ) : leads.length === 0 ? (
         // An empty screen is an invitation to act — and it's the right place to
         // explain the two tracks a lead travels, since there's nothing else here.
         <div className="card mt-2 px-6 py-14 text-center">
