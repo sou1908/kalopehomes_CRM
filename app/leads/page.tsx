@@ -94,25 +94,40 @@ export default async function LeadsHomePage({
           <h1 className="font-display text-[34px] font-medium leading-none tracking-[-0.015em]">
             {active?.name ?? "No pipeline"}
           </h1>
-          {visible.length > 1 && (
+          {/* The only pipeline switcher — the sidebar used to carry a second
+              copy of this same list. Still renders for a lone pipeline when
+              you're an admin, so the manage link can't vanish with it. */}
+          {(visible.length > 1 || user.roles.includes("admin")) && (
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-              {visible.map((p) => (
+              {visible.length > 1 &&
+                visible.map((p) => (
+                  <Link
+                    key={p.id}
+                    href={`/leads?pipeline=${p.id}`}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                      p.id === active?.id
+                        ? "border-accent/50 text-text"
+                        : "border-border text-muted hover:border-accent/50 hover:text-text"
+                    }`}
+                  >
+                    <span
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ backgroundColor: p.color }}
+                    />
+                    {p.name}
+                  </Link>
+                ))}
+              {/* Managing pipelines belongs next to choosing between them. */}
+              {user.roles.includes("admin") && (
                 <Link
-                  key={p.id}
-                  href={`/leads?pipeline=${p.id}`}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                    p.id === active?.id
-                      ? "border-accent/50 text-text"
-                      : "border-border text-muted hover:border-accent/50 hover:text-text"
-                  }`}
+                  href="/leads/pipelines"
+                  title="Manage pipelines"
+                  aria-label="Manage pipelines"
+                  className="inline-flex items-center rounded-full border border-border px-2 py-1 text-muted transition-colors hover:border-accent/50 hover:text-text"
                 >
-                  <span
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: p.color }}
-                  />
-                  {p.name}
+                  <Icon name="sliders" size={13} />
                 </Link>
-              ))}
+              )}
             </div>
           )}
         </div>

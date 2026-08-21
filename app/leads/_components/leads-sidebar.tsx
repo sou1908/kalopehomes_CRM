@@ -239,44 +239,11 @@ export function LeadsSidebar({
           />
         )}
 
-        {pipelines.length > 0 && (
-          <>
-            <div className="flex items-center justify-between px-3 pb-1.5 pt-5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
-                Pipelines
-              </span>
-              {user.roles.includes("admin") && (
-                <Link
-                  href="/leads/pipelines"
-                  className="text-muted transition-colors hover:text-accentInk"
-                  title="Manage pipelines"
-                >
-                  <Icon name="sliders" size={14} />
-                </Link>
-              )}
-            </div>
-            {pipelines.map((d) => (
-              <Link
-                key={d.id}
-                // The board itself takes ?pipeline=. There is no
-                // /leads/pipeline/<id> route — that link 404'd from the day the
-                // desks redesign removed the old page without adding one.
-                href={`/leads?pipeline=${d.id}`}
-                className={`flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm ${
-                  pathname === "/leads" && searchParams.get("pipeline") === d.id
-                    ? "bg-panel text-text"
-                    : "text-muted hover:bg-panel hover:text-text"
-                }`}
-              >
-                <span
-                  className="h-2 w-2 shrink-0 rounded-[3px]"
-                  style={{ backgroundColor: d.color }}
-                />
-                {d.name}
-              </Link>
-            ))}
-          </>
-        )}
+        {/* No Pipelines list here. The board header carries the same switcher,
+            directly above the board it switches — and switching pipeline is
+            something you do while looking at it, not from across the page.
+            Two controls doing one job is what this removes. Managing them
+            lives beside that switcher too, for admins. */}
 
         {user.roles.includes("admin") && (
           <>
