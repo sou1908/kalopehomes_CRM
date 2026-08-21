@@ -2,6 +2,7 @@ import "server-only";
 import mysql from "mysql2/promise";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as schema from "./schema";
+import { missingColumnStatements } from "./ddl";
 
 /**
  * MySQL, via mysql2 — chosen because it is pure JavaScript.
@@ -422,6 +423,32 @@ const TABLES: Array<[string, string]> = [
   ],
 ];
 
+/**
+ * Add any column the schema declares that the database is missing.
+ *
+ * This is what makes a feature that needs a new field survive a deploy. Without
+ * it the deploy succeeds, `CREATE TABLE IF NOT EXISTS` skips the existing
+ * table, and every query touching the new column fails with "Unknown column"
+ * on the live site.
+ */
+async function addMissingColumns(): Promise<void> {
+  const [rows] = (await pool.query(
+    `SELECT TABLE_NAME AS t, COLUMN_NAME AS c
+       FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()`,
+  )) as unknown as [Array<{ t: string; c: string }>, unknown];
+
+  const existing = new Set(
+    (rows ?? []).map((r) => `${r.t}.${r.c}`.toLowerCase()),
+  );
+
+  for (const statement of missingColumnStatements(existing)) {
+    // Logged individually: if one fails, the log says which column and why.
+    console.log(`[migrate] ${statement}`);
+    await pool.query(statement);
+  }
+}
+
 let schemaPromise: Promise<void> | null = null;
 
 /**
@@ -447,6 +474,11 @@ export function ensureSchema(): Promise<void> {
           throw err;
         }
       }
+
+      // Tables that already existed were skipped above, so a column added to
+      // schema.ts after this database was created would never appear in it.
+      // Top them up. Adds only — never drops or retypes anything.
+      await addMissingColumns();
 
       // Sessions that have already expired can never authenticate anyone again,
       // but they sit in the table as valid-looking tokens and grow it without
