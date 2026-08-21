@@ -315,7 +315,9 @@ export async function saveJourneyStepAction(formData: FormData) {
     actor: { userId: user.id, name: user.name },
   });
   revalidatePath(`/leads/${leadId}`);
-  if (pipelineId) revalidatePath(`/leads/pipeline/${pipelineId}`);
+  // The board is /leads?pipeline=<id>; revalidating the path covers it,
+  // query string and all. There is no /leads/pipeline/<id> route.
+  if (pipelineId) revalidatePath("/leads");
 }
 
 /** Escalate a lead to the Manager pipeline + notify the Lead Manager(s). */

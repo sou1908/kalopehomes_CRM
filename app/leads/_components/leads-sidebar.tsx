@@ -258,9 +258,12 @@ export function LeadsSidebar({
             {pipelines.map((d) => (
               <Link
                 key={d.id}
-                href={`/leads/pipeline/${d.id}`}
+                // The board itself takes ?pipeline=. There is no
+                // /leads/pipeline/<id> route — that link 404'd from the day the
+                // desks redesign removed the old page without adding one.
+                href={`/leads?pipeline=${d.id}`}
                 className={`flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm ${
-                  pathname === `/leads/pipeline/${d.id}`
+                  pathname === "/leads" && searchParams.get("pipeline") === d.id
                     ? "bg-panel text-text"
                     : "text-muted hover:bg-panel hover:text-text"
                 }`}
