@@ -66,6 +66,11 @@ export function SectionsField({
 
   const listId = `${name}-areas`;
 
+  // Suggested areas not already on the form. Compared case-insensitively so
+  // typing "kitchen" by hand still removes the Kitchen chip.
+  const taken = new Set(sections.map((s) => s.name.trim().toLowerCase()));
+  const unused = suggestions.filter((o) => !taken.has(o.trim().toLowerCase()));
+
   return (
     <div>
       <input type="hidden" name={name} value={JSON.stringify(cleaned)} />
@@ -189,7 +194,29 @@ export function SectionsField({
         ))}
       </div>
 
-      {/* Naming what you measured is what opens the block. */}
+      {/* Naming what you measured is what opens the block.
+          The suggested areas used to be a datalist — invisible unless you
+          happened to start typing, so on site nobody found them. They are
+          buttons now: one tap adds the area, and an area already added drops
+          off the row rather than offering a duplicate. */}
+      {unused.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {unused.map((o) => (
+            <button
+              key={o}
+              type="button"
+              onClick={() => addSection(o)}
+              title={`Add ${o}`}
+              className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] text-muted transition-colors hover:border-accent/50 hover:bg-elevated hover:text-text"
+            >
+              <Icon name="plus" size={11} />
+              {o}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Anything not on the list — no site is only ever the same eight rooms. */}
       <div className="mt-2 flex gap-1.5">
         <input
           value={draft}
@@ -201,7 +228,7 @@ export function SectionsField({
             }
           }}
           list={suggestions.length > 0 ? listId : undefined}
-          placeholder="Kitchen, wardrobe, balcony…"
+          placeholder="Something else…"
           aria-label="Area to measure"
           className="input max-w-[14rem] px-2 py-1.5 text-sm"
         />
