@@ -19,6 +19,7 @@ import {
   formatJourneyValue,
   describeJourneyValue,
   telHref,
+  whatsappHref,
 } from "@/lib/leads-shared";
 import { listAssignableMembers } from "@/lib/members";
 import {
@@ -207,10 +208,12 @@ export default async function LeadDetailPage({
               <h1 className="font-display text-2xl font-medium leading-tight tracking-tight sm:text-[2rem]">
                 {lead.name}
               </h1>
+              {/* Icons only, and sat beside the name: reaching this person is
+                  the page's main action, and the number itself is a click away
+                  under View details. WhatsApp sits with the dialler because for
+                  most of these leads it is the conversation that actually
+                  happens. */}
               {telHref(lead.phone) && (
-                // Icon only, and sat beside the name: calling this person is
-                // the page's main action, and the number itself is a click away
-                // under View details.
                 <a
                   href={telHref(lead.phone)!}
                   title={`Call ${lead.name} — ${lead.phone}`}
@@ -218,6 +221,18 @@ export default async function LeadDetailPage({
                   className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border text-accentInk transition-colors hover:border-accent/50 hover:bg-elevated"
                 >
                   <Icon name="phone" size={15} />
+                </a>
+              )}
+              {whatsappHref(lead.phone) && (
+                <a
+                  href={whatsappHref(lead.phone)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`WhatsApp ${lead.name} — ${lead.phone}`}
+                  aria-label={`WhatsApp ${lead.name} on ${lead.phone}`}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border text-success transition-colors hover:border-success/50 hover:bg-elevated"
+                >
+                  <Icon name="whatsapp" size={15} />
                 </a>
               )}
             </div>

@@ -49,14 +49,26 @@ export async function listMembers(orgId: string): Promise<MemberSummary[]> {
  */
 export async function listAssignableMembers(
   orgId: string,
-): Promise<Array<{ id: string; name: string }>> {
+): Promise<Array<{ id: string; name: string; roles: string[] }>> {
+  // Roles come back with each member so a picker can show only the people who
+  // can actually work the destination — handing a lead to someone with no role
+  // for it just parks it where nobody is looking.
+  //
+  // One row per (member, role), collapsed below: a member can hold several.
   const rows = await db
-    .selectDistinct({ id: users.id, name: users.name })
+    .select({ id: users.id, name: users.name, role: userRoles.role })
     .from(users)
     .innerJoin(userRoles, eq(userRoles.userId, users.id))
     .where(eq(users.orgId, orgId))
     .orderBy(users.name);
-  return rows;
+
+  const byId = new Map<string, { id: string; name: string; roles: string[] }>();
+  for (const r of rows) {
+    const found = byId.get(r.id);
+    if (found) found.roles.push(r.role);
+    else byId.set(r.id, { id: r.id, name: r.name, roles: [r.role] });
+  }
+  return [...byId.values()];
 }
 
 export class MemberError extends Error {}

@@ -83,6 +83,21 @@ export function isAdmin(roles: Role[]): boolean {
   return roles.includes("admin");
 }
 
+/**
+ * True when someone holding `roles` may work a pipeline open to `pipelineRoles`.
+ *
+ * The same rule `canWorkPipeline` in lib/pipelines.ts applies, kept here so the
+ * browser can use it too — that module is server-only. One implementation, so
+ * the list a form offers and the check the server makes cannot drift apart.
+ */
+export function rolesCanWorkPipeline(
+  pipelineRoles: string[],
+  roles: string[],
+): boolean {
+  if (roles.includes("admin")) return true;
+  return pipelineRoles.some((r) => roles.includes(r));
+}
+
 /** Where to send a user after login, based on the roles they hold. */
 export function defaultSurface(roles: Role[]): string {
   for (const r of ROLE_PRIORITY) {

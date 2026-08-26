@@ -46,6 +46,8 @@ import {
   TransferError,
 } from "@/lib/transfer";
 import { getPipeline, canWorkPipeline } from "@/lib/pipelines";
+import { listAssignableMembers } from "@/lib/members";
+import { rolesCanWorkPipeline } from "@/lib/roles-shared";
 import { canWorkLead } from "@/lib/access";
 // TEMPORARY — testing only, remove before launch.
 import { deleteAllLeads } from "@/lib/danger";
@@ -260,6 +262,23 @@ export async function transferLeadAction(
   const userId = String(formData.get("userId") ?? "");
   if (!pipelineId || !userId)
     return { error: "Pick both a pipeline and a person to transfer to." };
+
+  // The recipient must actually work the destination. The picker only offers
+  // eligible people, but a filtered dropdown is a convenience, not a rule —
+  // without this a crafted request could park a lead on someone who has no role
+  // for that pipeline and will never see it on their board.
+  const target = await getPipeline(pipelineId, user.orgId);
+  if (!target) return { error: "That pipeline no longer exists." };
+  const recipient = (await listAssignableMembers(user.orgId)).find(
+    (m) => m.id === userId,
+  );
+  if (!recipient) return { error: "That person is not a member of this team." };
+  if (!rolesCanWorkPipeline(target.roles, recipient.roles)) {
+    return {
+      error: `${recipient.name} doesn't work ${target.name}. Pick someone with that role, or give them one under Members.`,
+    };
+  }
+
   try {
     await transferLead(id, user.orgId, pipelineId, userId, {
       userId: user.id,

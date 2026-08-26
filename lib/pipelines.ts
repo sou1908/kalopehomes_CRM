@@ -2,6 +2,7 @@ import "server-only";
 import { nanoid } from "nanoid";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "./db";
+import { rolesCanWorkPipeline } from "./roles-shared";
 import {
   pipelines,
   leads,
@@ -38,8 +39,7 @@ export function canWorkPipeline(
   pipeline: { roles: string[] },
   roles: string[],
 ): boolean {
-  if (roles.includes("admin")) return true;
-  return pipeline.roles.some((r) => roles.includes(r));
+  return rolesCanWorkPipeline(pipeline.roles, roles);
 }
 
 /** Leads that finished a pipeline and have since moved on out of it. */
