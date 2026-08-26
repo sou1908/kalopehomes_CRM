@@ -25,6 +25,8 @@ export function ImportClient({
   const [fileName, setFileName] = useState<string | null>(null);
   const [csvText, setCsvText] = useState("");
   const [skipDuplicates, setSkipDuplicates] = useState(true);
+  // On by default: a lead nobody can ring is not worth a caller's queue.
+  const [skipUnreachable, setSkipUnreachable] = useState(true);
   const [assigneeId, setAssigneeId] = useState<string>(defaultAssigneeId ?? "");
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -66,9 +68,10 @@ export function ImportClient({
             ? `${r.created} lead${r.created === 1 ? "" : "s"} imported`
             : "Nothing was imported"}
         </h2>
-        <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
+        <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3 lg:grid-cols-5">
           <Tally label="Created" value={r.created} tone="text-success" />
           <Tally label="Duplicates skipped" value={r.skippedDuplicates} />
+          <Tally label="No phone, skipped" value={r.skippedUnreachable} />
           <Tally label="Rows without a name" value={r.skippedInvalid} />
           <Tally label="Failed" value={r.failures.length} tone="text-danger" />
         </dl>
@@ -109,7 +112,14 @@ export function ImportClient({
   if (phase.step === "review") {
     const p = phase.preview;
     const willCreate =
-      p.totals.ready - (skipDuplicates ? p.totals.duplicates : 0);
+      p.totals.ready -
+      // A row can be both a duplicate and unreachable; count it once.
+      p.rows.filter(
+        (r) =>
+          !r.error &&
+          ((skipDuplicates && r.duplicateOf != null) ||
+            (skipUnreachable && r.unreachable)),
+      ).length;
 
     return (
       <div className="mt-6 space-y-4">
@@ -135,13 +145,18 @@ export function ImportClient({
             </p>
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <Figure label="Rows read" value={p.totals.total} />
             <Figure label="Will import" value={willCreate} tone="text-success" />
             <Figure
               label="Duplicates"
               value={p.totals.duplicates}
               tone={p.totals.duplicates > 0 ? "text-marigold" : undefined}
+            />
+            <Figure
+              label="No phone"
+              value={p.totals.unreachable}
+              tone={p.totals.unreachable > 0 ? "text-marigold" : undefined}
             />
             <Figure
               label="No name"
@@ -209,7 +224,9 @@ export function ImportClient({
               <tbody>
                 {p.rows.map((r) => {
                   const skipped =
-                    r.error != null || (skipDuplicates && r.duplicateOf != null);
+                    r.error != null ||
+                    (skipDuplicates && r.duplicateOf != null) ||
+                    (skipUnreachable && r.unreachable);
                   return (
                     <tr
                       key={r.line}
@@ -248,6 +265,13 @@ export function ImportClient({
                               Repeated earlier in this file.
                             </div>
                           )}
+                          {!r.error && r.unreachable && (
+                            <div className="text-marigold">
+                              {r.phone
+                                ? `"${r.phone}" isn't a full phone number.`
+                                : "No phone number — nobody can call this lead."}
+                            </div>
+                          )}
                           {r.warnings.map((w, i) => (
                             <div key={i} className="text-muted">
                               {w}
@@ -282,6 +306,16 @@ export function ImportClient({
               {p.totals.duplicates === 1 ? "" : "s"}
             </label>
 
+            <label className="flex items-center gap-2 text-sm text-muted">
+              <input
+                type="checkbox"
+                checked={skipUnreachable}
+                onChange={(e) => setSkipUnreachable(e.target.checked)}
+                className="accent-accent"
+              />
+              Skip the {p.totals.unreachable} with no phone
+            </label>
+
             {assignees.length > 0 && (
               <label className="flex items-center gap-2 text-sm text-muted">
                 Assign to
@@ -310,6 +344,7 @@ export function ImportClient({
                   csvText,
                   skipDuplicates,
                   assigneeId || null,
+                  skipUnreachable,
                 );
                 if (res.ok) setPhase({ step: "done", result: res.result });
                 else setError(res.error);

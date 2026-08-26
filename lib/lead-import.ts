@@ -6,6 +6,7 @@ import { parseCsv, normalizeHeader } from "./csv";
 import { createLead, listLeadStages, type LeadActor } from "./leads";
 import { firstPipelineId, setLeadPipeline } from "./pipelines";
 import { addLeadAssignee } from "./assignees";
+import { isCallable } from "./leads-shared";
 
 /**
  * CSV → leads. Built for marketing dumps (Facebook lead ads, spreadsheets from
@@ -104,6 +105,11 @@ export type ImportRow = {
   warnings: string[];
   /** Matches a lead already in the CRM, or an earlier row in this same file. */
   duplicateOf: "existing" | "file" | null;
+  /**
+   * No number a telecaller could ring — missing, or too short to be one.
+   * Imports fine; flagged so it can be skipped in a batch.
+   */
+  unreachable: boolean;
 };
 
 export type ImportPreview = {
@@ -114,7 +120,13 @@ export type ImportPreview = {
   ignored: string[];
   /** True when the file had no usable "name" column at all. */
   missingNameColumn: boolean;
-  totals: { total: number; ready: number; failed: number; duplicates: number };
+  totals: {
+    total: number;
+    ready: number;
+    failed: number;
+    duplicates: number;
+    unreachable: number;
+  };
   truncated: boolean;
 };
 
@@ -200,7 +212,7 @@ export async function previewLeadImport(
       matched: [],
       ignored: [],
       missingNameColumn: true,
-      totals: { total: 0, ready: 0, failed: 0, duplicates: 0 },
+      totals: { total: 0, ready: 0, failed: 0, duplicates: 0, unreachable: 0 },
       truncated: false,
     };
   }
@@ -328,11 +340,14 @@ export async function previewLeadImport(
       error: name ? null : "No name — every lead needs one.",
       warnings,
       duplicateOf,
+      unreachable: !isCallable(phone),
     };
   });
 
   const failed = rows.filter((r) => r.error).length;
   const duplicates = rows.filter((r) => r.duplicateOf).length;
+  // Only rows that would otherwise import — a row with no name is already out.
+  const unreachable = rows.filter((r) => !r.error && r.unreachable).length;
 
   return {
     rows,
@@ -344,6 +359,7 @@ export async function previewLeadImport(
       ready: rows.length - failed,
       failed,
       duplicates,
+      unreachable,
     },
     truncated,
   };
@@ -353,6 +369,7 @@ export type ImportResult = {
   created: number;
   skippedDuplicates: number;
   skippedInvalid: number;
+  skippedUnreachable: number;
   failures: Array<{ line: number; name: string; reason: string }>;
 };
 
@@ -371,7 +388,11 @@ export async function commitLeadImport(
   csvText: string,
   orgId: string,
   actor: LeadActor,
-  options: { skipDuplicates: boolean; assigneeUserId?: string | null },
+  options: {
+    skipDuplicates: boolean;
+    skipUnreachable?: boolean;
+    assigneeUserId?: string | null;
+  },
 ): Promise<ImportResult> {
   const preview = await previewLeadImport(csvText, orgId);
   const pipelineId = await firstPipelineId(orgId);
@@ -380,6 +401,7 @@ export async function commitLeadImport(
     created: 0,
     skippedDuplicates: 0,
     skippedInvalid: 0,
+    skippedUnreachable: 0,
     failures: [],
   };
 
@@ -390,6 +412,10 @@ export async function commitLeadImport(
     }
     if (options.skipDuplicates && row.duplicateOf) {
       result.skippedDuplicates++;
+      continue;
+    }
+    if (options.skipUnreachable && row.unreachable) {
+      result.skippedUnreachable++;
       continue;
     }
 

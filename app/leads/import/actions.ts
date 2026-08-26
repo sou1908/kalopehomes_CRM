@@ -51,6 +51,7 @@ export async function commitImportAction(
   csvText: string,
   skipDuplicates: boolean,
   assigneeUserId: string | null,
+  skipUnreachable = false,
 ): Promise<CommitState> {
   const user = await requireRole([...LEAD_SURFACE_ROLES]);
   if (!user.orgId) return { ok: false, error: "No organization found for your account." };
@@ -66,7 +67,7 @@ export async function commitImportAction(
       csvText,
       user.orgId,
       { userId: user.id, name: user.name },
-      { skipDuplicates, assigneeUserId },
+      { skipDuplicates, skipUnreachable, assigneeUserId },
     );
     revalidatePath("/leads");
     revalidatePath("/leads/all");

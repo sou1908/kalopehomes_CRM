@@ -616,6 +616,22 @@ export function inDateRange(
   return true;
 }
 
+/**
+ * Could a telecaller actually ring this?
+ *
+ * An Indian mobile is ten digits, so anything shorter is a stub — a blank cell,
+ * "N/A", or half a number typed into an ad form. These rows import perfectly
+ * happily and then sit on the board forever: a name nobody can contact, taking
+ * up a caller's queue and quietly spoiling the conversion figures.
+ *
+ * Counted rather than blocked, because the row may still be worth keeping if it
+ * carries an email or an address, and that call is the user's to make.
+ */
+export function isCallable(phone: string | null): boolean {
+  if (!phone) return false;
+  return phone.replace(/\D/g, "").length >= 10;
+}
+
 /** Assumed when a number carries no country code. India. */
 const DEFAULT_COUNTRY_CODE = "91";
 
