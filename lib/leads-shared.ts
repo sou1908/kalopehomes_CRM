@@ -137,6 +137,23 @@ export type JourneyCheck = { item: string; status: CheckStatus; note?: string };
 export const CHECK_STATUSES: CheckStatus[] = ["yes", "no", "pending"];
 
 /**
+ * How each answer reads on screen.
+ *
+ * "no" shows as "Not needed", because that is what it actually means here: this
+ * site has no plumbing work, so there are no plumbing points to note. It is a
+ * settled answer, not a failure — which is why it is styled as neutral rather
+ * than as an alert, and why "pending" is the one that draws the eye.
+ *
+ * The stored value stays "no". Renaming it would orphan every checklist already
+ * recorded, and the label is the only part anyone reads.
+ */
+export const CHECK_LABELS: Record<CheckStatus, string> = {
+  yes: "Yes",
+  no: "Not needed",
+  pending: "Pending",
+};
+
+/**
  * Reads a checklist value, tolerating both earlier shapes: a plain array of
  * ticked labels, and the {item, checked} form that replaced it. A box that was
  * merely unticked becomes "pending" rather than "no" — it never meant the
@@ -758,9 +775,15 @@ export function describeJourneyValue(
   if (field.type === "checklist") {
     const checks = parseJourneyChecks(v);
     const n = (st: CheckStatus) => checks.filter((c) => c.status === st).length;
-    const no = checks.filter((c) => c.status === "no").map((c) => c.item);
-    const head = `${n("yes")} yes · ${n("no")} no`;
-    return no.length > 0 ? `${head} (no: ${no.join(", ")})` : head;
+    // The timeline one-liner names what is still outstanding, not what was
+    // ruled out — pending is the part someone has to come back to.
+    const pending = checks
+      .filter((c) => c.status === "pending")
+      .map((c) => c.item);
+    const head = `${n("yes")} yes · ${n("no")} not needed`;
+    return pending.length > 0
+      ? `${head} (pending: ${pending.join(", ")})`
+      : head;
   }
 
   if (field.type === "sections") {

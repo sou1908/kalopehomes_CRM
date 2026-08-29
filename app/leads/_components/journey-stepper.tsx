@@ -452,16 +452,19 @@ function ChecklistSummary({
   return (
     <div className="space-y-1">
       <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-        {yes.length} yes · {no.length} no · {pending.length} pending
+        {yes.length} yes · {no.length} not needed · {pending.length} pending
       </p>
 
-      {/* A "no" is a problem someone has to solve, so it leads. */}
-      {no.length > 0 && (
-        <p className="text-[11px] text-danger">No: {no.map(line).join(" · ")}</p>
-      )}
+      {/* Pending leads: it is the only group anyone still has to act on.
+          "Not needed" is a settled answer, so it reads quietly below. */}
       {pending.length > 0 && (
         <p className="text-[11px] text-marigold">
           Pending: {pending.map(line).join(" · ")}
+        </p>
+      )}
+      {no.length > 0 && (
+        <p className="text-[11px] text-muted">
+          Not needed: {no.map(line).join(" · ")}
         </p>
       )}
       {yes.filter((i) => noteOf(i)).length > 0 && (

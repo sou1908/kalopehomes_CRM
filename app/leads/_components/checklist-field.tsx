@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   parseJourneyChecks,
   CHECK_STATUSES,
+  CHECK_LABELS,
   type CheckStatus,
   type JourneyCheck,
 } from "@/lib/leads-shared";
@@ -26,18 +27,22 @@ import { Icon } from "@/app/_components/icons";
  *
  * Submits `name` as JSON: [{ item, status, note? }].
  */
-const LABELS: Record<CheckStatus, string> = {
-  yes: "Yes",
-  no: "No",
-  pending: "Pending",
-};
+// Labels live in leads-shared so the composer, the read-back and the timeline
+// summary can never disagree about what an answer is called.
 
-/** The select carries its own answer's colour, so the state reads at a glance
- *  down a column of eight without opening anything. */
+/**
+ * The select carries its own answer's colour, so the state reads at a glance
+ * down a column of eight without opening anything.
+ *
+ * Green is done, grey is deliberately not applicable, amber is still
+ * outstanding. "Not needed" used to be red, which read as a problem when it is
+ * the opposite — an answer, given. Amber now belongs to Pending, which is the
+ * only row anyone still has to act on.
+ */
 const TONE: Record<CheckStatus, string> = {
   yes: "bg-success/10 text-success border-success/40",
-  no: "bg-danger/10 text-danger border-danger/40",
-  pending: "bg-panel text-muted border-border",
+  no: "bg-elevated text-muted border-border",
+  pending: "bg-marigold/10 text-marigold border-marigold/40",
 };
 
 export function ChecklistField({
@@ -111,7 +116,7 @@ export function ChecklistField({
                   >
                     {CHECK_STATUSES.map((st) => (
                       <option key={st} value={st}>
-                        {LABELS[st]}
+                        {CHECK_LABELS[st]}
                       </option>
                     ))}
                   </select>
@@ -146,7 +151,7 @@ export function ChecklistField({
       </ul>
 
       <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-        {count("yes")} yes · {count("no")} no · {count("pending")} pending
+        {count("yes")} yes · {count("no")} not needed · {count("pending")} pending
       </p>
     </div>
   );
